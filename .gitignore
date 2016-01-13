@@ -1,3 +1,6 @@
+#mac
+.DS_Store
+
 #Eclipse
 .metadata
 bin/
@@ -35,3 +38,4 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+/notes.txt
