@@ -1,0 +1,44 @@
+{
+	"properties": {
+		"intNum" : {
+			"type" : "integer"
+		},
+		"longNum" : {
+			"type" : "long"
+		},
+		"floatNum" : {
+			"type" : "float"
+		},
+		"doubleNum" : {
+			"type" : "double"
+		},
+		"shortNum" : {
+			"type" : "short"
+		},
+		"byteNum" : {
+			"type" : "byte"
+		},
+		"text": {
+			"type" : "multi_field",
+                "fields" : {
+                    "text" : {"type" : "string", "index" : "not_analyzed"},
+                    "analyzed" : {"type" : "string", "index" : "analyzed", "analyzer" : "simple"}
+                }
+		},
+		"date" : {
+			"type" : "date"
+		},
+		"bool" : {
+			"type" : "boolean"
+		},
+		"nestedDoc" : {
+			"type" : "object"
+		},
+		"numbers" : {
+			"type" : "double"
+		},
+		"docs" : {
+			"type" : "object"
+		}
+	}
+}
