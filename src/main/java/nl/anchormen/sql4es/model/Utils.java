@@ -24,7 +24,7 @@ public class Utils {
 	private static final int FETCH_SIZE = 10000; // 10K is current max for ES
 	private static final int SCROLL_TIMEOUT_SEC = 60;
 	private static final int QUERY_TIMEOUT_MS = 10000;
-	private static final int DEFAULT_ROW_LENGTH = 1000; // used during initialization of rows when querying all columns (Select *)
+	private static final int DEFAULT_ROW_LENGTH = 250; // used during initialization of rows when querying all columns (Select *)
 	private static final String QUERY_CACHE = "query_cache";
 	private static final String RESULT_NESTED_LATERAL = "true";
 	

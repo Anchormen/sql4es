@@ -17,7 +17,7 @@ public class Sql4EsBase extends ESIntegTestCase {
 	 */
 	public Sql4EsBase() throws Exception {
 		super();
-		Class.forName("nl.am.sql4es.jdbc.ESDriver");
+		Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
 	}
 	
 	/**

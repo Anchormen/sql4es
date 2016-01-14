@@ -1,4 +1,4 @@
-##Introduction
+###Introduction
 Sql-for-Elasticsearch (sql4es) is a jdbc(??) driver for Elasticsearch implementing the majority of the JDBC interfaces:
  - Statement
  - PreparedStatment (just builds a query using the provided objects)
@@ -21,10 +21,10 @@ Simply said it translates sql statements to their ES counterpartsstatements, exe
 - DELETE FROM: removes documents
 - USE: selects an index as its active scope
 
-##Usage
+###Usage
 The sql4es driver can be used by adding the jar file to the tool/application used and load the driver with name 'nl.am.sql4es.jdbc.ESDriver'. The driver expects an URL with the following format: jdbc:sql4es://host:port/index?params. Additional hosts and other properties can be set through the URL's parameters.
 
-##Concepts
+###Concepts
 Since elasticsearch is a nosql database it does not contain the exact relational objects most people are familiar with (like databases, tables and records). ES does however have a similar hierarchy of objects (index, type and document). The conceptual mapping used by sql4es is the following:
  - Database = Index
  - Table = Type
@@ -32,10 +32,10 @@ Since elasticsearch is a nosql database it does not contain the exact relational
  - Column = Field
  - View = Alias (this does not fit from a hierarchical perspective but does match given the purpose of views / aliases)
 
-##QUERIES
+###QUERIES
 This section describes how SQL is interpreted and converted into SE statements. The presto parser is used to parse SQL statements, please see the syntax definition on https://prestodb.io/docs/current/sql.html
 
-###SELECT
+####SELECT
 Basic syntax: SELECT <field> (AS alias) FROM <types> WHERE <condition> GROUP BY <fields> HAVING <condition> ORDER BY <fields> [ASC|DESC] LIMIT <number>
 
 Fields (also in objects) can be addressed by using their hierarchical names in dotted notation like: nesteddoc.otherdoc.field. It is possible to specify the root of an object in order to fetch all its fields A query like SELECT nesteddoc ... will fetch all fields present in nesteddoc.
@@ -61,12 +61,12 @@ Notes:
 - having (filtering on aggregated results) is currently performed within the driver
 - sorting of aggregated results are currently performed within the driver
 
-###USE
+####USE
 Sql4es works from the scope of a single index/alias. By default this is the index/alias specified within the URL used to get the connection. It is possible to change the index/alias scope by executing:
 USE <index / alias> (throws exception if index/alias does not exist)
 All subsequent statements will be executed from the specified index/alias. This action only influences the driver and has no effect on Elasticsearch
 
-###CREATE
+####CREATE
 Sql4es supports creation of indices (create table) and aliases (create view). These statements require knowledge of ES mechanics like mappings, type definitons and aliases.
 
 CREATE TABLE <(index.)type> (<field> "<field definition>" (, <field2>)...) WITH (<property="value"> (, property2=...) )
@@ -87,7 +87,7 @@ Note that this is a two step process taking place at the driver. First the index
 CREATE VIEW <alias> AS SELECT * FROM <index1> (, <index2>)... (WHERE <condition>)
 Creates a new ES alias containing the specified indexes or adds the indexes to an existing alias. The optional WHERE clause adds a filter on the index-alias pairs specified. See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html for information on aliases
 
-###Update
+####Update
 Describes inserting and deleting data through sql
 
 INSERT INTO <(index.)type> (<field1>, <field2>...) VALUES (<value1>, <value2>, ...), (<value!>, ...), ... 
@@ -101,4 +101,4 @@ DELETE FROM <type> (WHERE <condition>)
 Deletes all documents from the specified type that meet the condition. If no WHERE clause is specified all documents will be removed.
 As Elasticsearch can only delete documents based on their _id this statement is executed in first steps. First collect all _id's from documents that meet the condition, secondly delete those documents using the bulk API 
 
-##CONFIGURATION
+###CONFIGURATION
