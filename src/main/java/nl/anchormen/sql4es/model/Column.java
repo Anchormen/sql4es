@@ -21,7 +21,8 @@ public class Column implements Comparable<Column>{
 		this.op = op;
 		this.index = index;
 		if(name.equals("*") && op == Operation.COUNT) alias = "count(*)";
-		if(name.equals("1") && op == Operation.COUNT) alias = "count(1)";
+		else if(name.equals("1") && op == Operation.COUNT) alias = "count(1)";
+		
 		switch(this.op){
 			case COUNT: sqlType = Types.BIGINT; break;
 			case NONE: sqlType = Types.VARCHAR; break;
@@ -106,11 +107,11 @@ public class Column implements Comparable<Column>{
 	 */
 	public String getFullName(){
 		switch(op){
-			case AVG: return "AVG("+getColumn()+")";
-			case COUNT: return "COUNT("+getColumn()+")";
-			case MAX: return "MAX("+getColumn()+")";
-			case MIN: return "MIN("+getColumn()+")";
-			case SUM: return "SUM("+getColumn()+")";
+			case AVG: return "avg("+getColumn()+")";
+			case COUNT: return "count("+getColumn()+")";
+			case MAX: return "max("+getColumn()+")";
+			case MIN: return "min("+getColumn()+")";
+			case SUM: return "sum("+getColumn()+")";
 			default : return getColumn();
 		}
 	}

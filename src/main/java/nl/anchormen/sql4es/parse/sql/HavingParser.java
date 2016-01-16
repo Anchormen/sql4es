@@ -6,6 +6,7 @@ import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.Literal;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
@@ -37,13 +38,17 @@ public class HavingParser extends AstVisitor<IComparison, QueryState>{
 			if(compareExp.getLeft() instanceof DereferenceExpression){
 				// parse columns like 'reference.field'
 				col = SelectParser.visitDereferenceExpression((DereferenceExpression)compareExp.getLeft());
+			}else if (compareExp.getLeft() instanceof FunctionCall){
+				col = compareExp.getLeft().toString()
+						.replaceAll("\"","").replaceAll("\\*", "\\\\*")
+						.replaceAll("\\(", "\\s*\\\\(\\s*").replaceAll("\\)", "\\s*\\\\)\\s*");
 			}else{
 				col = ((QualifiedNameReference)compareExp.getLeft()).getName().toString();
 			}
-			col = Heading.findOriginal(state.originalSql(), col, "having.+", "\\W");
+			col = Heading.findOriginal(state.originalSql()+";", col, "having.+", ".*;");
 			Column leftCol = state.getHeading().getColumnByLabel(col);
 			if(leftCol == null){
-				state.addException("column "+col+" not found in SELECT clause");
+				state.addException("Having reference "+compareExp.getLeft()+" not found in SELECT clause");
 				return null;
 			}
 			

@@ -18,6 +18,7 @@ import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.DereferenceExpression;
+import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
@@ -164,6 +165,10 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 				String orderKey;
 				if(si.getSortKey() instanceof DereferenceExpression){
 					orderKey = SelectParser.visitDereferenceExpression((DereferenceExpression)si.getSortKey());
+				}else if (si.getSortKey() instanceof FunctionCall){
+					orderKey = si.getSortKey().toString()
+							.replaceAll("\"","").replaceAll("\\*", "\\\\*")
+							.replaceAll("\\(", "\\s*\\\\(\\s*").replaceAll("\\)", "\\s*\\\\)\\s*");
 				}else {
 					orderKey = ((QualifiedNameReference)si.getSortKey()).getName().toString();
 				}

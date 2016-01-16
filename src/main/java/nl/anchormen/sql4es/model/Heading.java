@@ -174,7 +174,6 @@ public class Heading {
 			if(col.getAlias() != null) aliasIndex.put(col.getAlias(), col);
 			if(col.isVisible()){
 				columnToTrueIndex.put(visIndex, col.getIndex());
-				//System.out.println("index "+col.getFullName()+" col: "+visIndex+" -> "+col.getIndex());
 				visIndex++;
 			}
 		}

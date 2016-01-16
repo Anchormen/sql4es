@@ -14,6 +14,8 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.search.aggregations.Aggregation;
 
+import com.facebook.presto.sql.tree.Explain;
+import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 
 import nl.anchormen.sql4es.jdbc.ESStatement;
@@ -69,6 +71,7 @@ public class ESQueryState{
 	 * state after which it is not possible to retrieve results for any previously build queries. 
 	 * @param sql
 	 * @param indexes
+	 * @return 
 	 * @throws SQLException
 	 */
 	@SuppressWarnings("unchecked")
@@ -84,6 +87,21 @@ public class ESQueryState{
 		if(info[1] != null) having = (IComparison)info[1];
 		if(info[2] != null) orderings = (List<OrderBy>)info[2];
 		this.limit = (int)info[3];
+	}
+	
+	/**
+	 * Builds the request defined within the explain statement and returns its string representation
+	 * @param sql
+	 * @param explain
+	 * @param indexes
+	 * @return
+	 * @throws SQLException
+	 */
+	public String explain(String sql, Explain explain, String... indexes) throws SQLException {
+		com.facebook.presto.sql.tree.Statement explanSt = explain.getStatement();
+		if(!(explanSt instanceof Query)) throw new SQLException("Can only EXPLAIN SELECT ... statements");
+		this.buildRequest(sql, ((Query)explanSt).getQueryBody(), indexes);
+		return this.request.toString();
 	}
 
 	/**

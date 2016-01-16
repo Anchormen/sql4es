@@ -19,7 +19,6 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.index.IndexRequest;
@@ -60,13 +59,12 @@ public class ESUpdateState {
 	private final UpdateParser updateParser = new UpdateParser();
 	private Client client;
 	private Properties props;
-	private BulkRequestBuilder bulkRequest;
+	private List<String> bulkList = new ArrayList<String>();
 	private ESQueryState queryState;
 	private Statement statement;
 	
 	public ESUpdateState(Client client, Statement statement) throws SQLException{
 		this.client = client;
-		this.bulkRequest = client.prepareBulk();
 		this.props = statement.getConnection().getClientInfo();
 		this.statement = statement;
 		this.queryState = new ESQueryState(client, statement);
@@ -294,14 +292,9 @@ public class ESUpdateState {
 	 * @throws SQLException
 	 */
 	public void addToBulk(String sql, String index) throws SQLException{
-		com.facebook.presto.sql.tree.Statement st = new SqlParser().createStatement(sql);
-		if(st instanceof Insert){
-			List<IndexRequestBuilder> requests = this.requestsForInsert(sql, (Insert)st, index);
-			for(IndexRequestBuilder irb : requests) this.bulkRequest.add(irb);
-		}else if (st instanceof Delete){
-			List<DeleteRequestBuilder> requests = this.requestsForDelete(sql, (Delete)st, index);
-			for(DeleteRequestBuilder drb : requests) this.bulkRequest.add(drb);
-		}else throw new SQLException("Not possible to add request to bulk, it must be an INDEX or DELETE statement");
+		String sqlNorm = sql.trim().toLowerCase();
+		if(sqlNorm.startsWith("select")) throw new SQLException("It is not possible to add a SELECT statement to a bulk");
+		this.bulkList.add(sql);
 	}
 	
 	/**
@@ -310,13 +303,31 @@ public class ESUpdateState {
 	 * else Statement.EXECUTE_FAILED)
 	 */
 	public int[] executeBulk(){
-		BulkResponse response = bulkRequest.execute().actionGet();
-		int[] result = new int[response.getItems().length];
-		for(int i=0; i<result.length; i++){
-			if(response.getItems()[i].isFailed()) result[i] = Statement.EXECUTE_FAILED;
-			else result[i] = Statement.SUCCESS_NO_INFO;
+		int[] result = new int[bulkList.size()];
+		SqlParser parser = new SqlParser();
+		for(int i=0; i<bulkList.size(); i++) try{
+			String sql = bulkList.get(i);
+			com.facebook.presto.sql.tree.Statement st = parser.createStatement(sql);
+			if(st instanceof DropTable){
+				this.execute(sql, (DropTable)st);
+			}else if(st instanceof DropView){
+				this.execute(sql, (DropView)st);
+			}else if(st instanceof CreateTable){
+				this.execute(sql, (CreateTable)st, this.statement.getConnection().getSchema());
+			}else if(st instanceof CreateTableAsSelect){
+				this.execute(sql, (CreateTableAsSelect)st, this.statement.getConnection().getSchema());
+			}else if(st instanceof CreateView){
+				this.execute(sql, (CreateView)st, this.statement.getConnection().getSchema());
+			}else if(st instanceof Delete){
+				this.execute(sql, (Delete)st, this.statement.getConnection().getSchema());
+			}else  if(st instanceof Insert){
+				this.execute(sql, (Insert)st, this.statement.getConnection().getSchema());
+			}
+			result[i]= Statement.SUCCESS_NO_INFO;
+		}catch (Exception e){
+			result[i] = Statement.EXECUTE_FAILED;
 		}
-		bulkRequest = client.prepareBulk();
+		this.clearBulk();
 		return result;
 	}
 	
@@ -324,7 +335,7 @@ public class ESUpdateState {
 	 * Clears the {@link BulkRequest} held by this state.
 	 */
 	public void clearBulk(){
-		bulkRequest = client.prepareBulk();
+		bulkList.clear();
 	}
 
 	// ---------------------------------------[ DELETE ]-----------------------------------------

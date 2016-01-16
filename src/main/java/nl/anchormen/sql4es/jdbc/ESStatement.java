@@ -6,6 +6,9 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.List;
+
+import org.elasticsearch.action.search.SearchRequestBuilder;
 
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.CreateTable;
@@ -14,12 +17,16 @@ import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.DropTable;
 import com.facebook.presto.sql.tree.DropView;
+import com.facebook.presto.sql.tree.Explain;
 import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.Use;
 
 import nl.anchormen.sql4es.ESQueryState;
+import nl.anchormen.sql4es.ESResultSet;
 import nl.anchormen.sql4es.ESUpdateState;
+import nl.anchormen.sql4es.model.Column;
+import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
 
 public class ESStatement implements Statement {
@@ -55,10 +62,23 @@ public class ESStatement implements Statement {
 	public ResultSet executeQuery(String sql) throws SQLException {
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
 		com.facebook.presto.sql.tree.Statement statement = parser.createStatement(sql);
-		if(!(statement instanceof Query)) throw new SQLException("Provided query is not a Select query");
-		queryState.buildRequest(sql, ((Query)statement).getQueryBody(), connection.getSchema());
-		this.result = queryState.execute();
-		return this.result;
+		if(statement instanceof Query){
+			if(this.result != null) this.result.close();
+			queryState.buildRequest(sql, ((Query)statement).getQueryBody(), connection.getSchema());
+			this.result = queryState.execute();
+			return this.result;
+		}else if(statement instanceof Explain){
+			String ex = queryState.explain(sql, (Explain)statement, connection.getSchema());
+			if(this.result != null) this.result.close();
+			Heading heading = new Heading();
+			heading.add(new Column("Explanation",0));
+			ESResultSet rs = new ESResultSet(heading, 1, 1);
+			List<Object> row = rs.getNewRow();
+			row.set(0, ex);
+			rs.add(row);
+			this.result = rs;
+			return result;
+		}else throw new SQLException("Provided query is not a SELECT or EXPLAIN query");
 	}
 
 	@Override
@@ -153,7 +173,7 @@ public class ESStatement implements Statement {
 	public boolean execute(String sql) throws SQLException {
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
 		String sqlNorm = sql.trim().toLowerCase();
-		if(sqlNorm.startsWith("select")) {
+		if(sqlNorm.startsWith("select") || sqlNorm.startsWith("explain")) {
 			this.result = this.executeQuery(sql);
 			return result != null;
 		}else if(sqlNorm.startsWith("insert") || sqlNorm.startsWith("delete")
