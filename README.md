@@ -1,6 +1,6 @@
 ### Introduction sql4es
 
-Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.1 implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata.
+Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata.
 
 Simply said it translates SQL statements to their Elasticsearch counterparts, executes them and returns the result in a ResultSet implementation. The following sql statements are supported:
 
@@ -11,7 +11,7 @@ Simply said it translates SQL statements to their Elasticsearch counterparts, ex
   * GROUP BY
   * HAVING
   * ORDER BY
-  * LIMIT
+  * LIMIT (without offset, offsets are not supported by sql4es)
 - CREATE TABLE (AS) creates an index/type and optionally indexes the result of a query into it
 - CREATE VIEW (AS): creates an alias, optionally with a filter
 - DROP TABLE/VIEW removes an index or alias
@@ -20,12 +20,13 @@ Simply said it translates SQL statements to their Elasticsearch counterparts, ex
 - USE: selects an index as its active 
 - EXPLAIN SELECT: returns the Elasticsearch query performed
 
-The driver can be used from code or applications able to load drivers. It has been used succesfully with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster.
+The driver can be used from code or applications able to load the jdbc driver. It has been used succesfully with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. 
 
 **Not supported (yet)**
 
+* Offsets are not supported (OFFSET or LIMIT offset, number)
 * Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
-* Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type. 
+* Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
 
 ### Usage
 
@@ -60,9 +61,9 @@ Since elasticsearch is a nosql database it does not contain the exact relational
 - Column = Field
 - View = Alias (this does not fit from a hierarchical perspective but does match given the purpose of views / aliases)
 
-Elasticsearch responses, both search results and aggregations, are put into a ResultSet implementation. Any nested objects are 'exploded' into a lateral view which means that nested objects are treated as joined tables which are put inside the he same row (see [this page](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView) for explanation). It is possible to represent nested objects as a nested ResultSet, see the Configuration section. Note, that although objects are exploded, arrays with primitives are not! They are put in a java.sql.Array implementation supported by JDBC.
+Elasticsearch responses, both search results and aggregations, are put into a ResultSet implementation. Any nested objects are 'exploded' into a lateral view by default; this means that nested objects are treated as joined tables which are put inside the he same row (see [this page](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView) for explanation). It is possible to represent nested objects as a nested ResultSet, see the Configuration section. Note, that although objects are exploded, arrays with primitives are not! They are put in a java.sql.Array implementation supported by JDBC.
 
-Sql4es works from an active index wich means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. It is possible to change the active index by executing *USE [otherIndex]*. 
+Sql4es works from an active index wich means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. Executing a SELECT on a type that does not exist within an index will return an empty result. It is possible to change the active index by executing *USE [otherIndex]* as described below. 
 
 ### QUERIES
 

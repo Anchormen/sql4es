@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -237,7 +236,6 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 			req.setSize(determineLimit(limit) );
 		} else if (orderings.isEmpty()){ // scrolling does not work well with sort
 			req.setSize(fetchSize/5); // scanning results in 5 * size results... huh!?!
-			req.setSearchType(SearchType.SCAN);
 			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)));
 		}
 		

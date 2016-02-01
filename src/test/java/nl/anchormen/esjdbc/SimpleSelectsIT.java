@@ -118,6 +118,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		assertEquals(5, count);
 	}
 	
+	@SuppressWarnings("deprecation")
 	@Test
 	public void selectRanges() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10);
