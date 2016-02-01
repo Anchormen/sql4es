@@ -20,6 +20,12 @@ import com.facebook.presto.sql.tree.Values;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 
+/**
+ * A Presto {@link AstVisitor} implementation that parses INSERT clauses
+ * 
+ * @author cversloot
+ *
+ */
 public class UpdateParser extends AstVisitor<List<Object>, QueryState>{
 
 	

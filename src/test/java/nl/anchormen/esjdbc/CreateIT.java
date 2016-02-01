@@ -1,4 +1,4 @@
-package nl.am.esjdbc;
+package nl.anchormen.esjdbc;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;

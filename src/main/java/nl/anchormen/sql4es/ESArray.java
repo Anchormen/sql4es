@@ -10,6 +10,12 @@ import java.util.Map;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 
+/**
+ * Implementation of {@link Array} used to hold array's with primitive types recieved from elasticsearch
+ * 
+ * @author cversloot
+ *
+ */
 public class ESArray implements Array {
 
 	private List<Object> array;

@@ -10,6 +10,7 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 
+import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.GroupingElement;
 
@@ -19,6 +20,12 @@ import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.Column.Operation;
 
+/**
+ * A Presto {@link AstVisitor} implementation that parses GROUP BY clauses
+ * 
+ * @author cversloot
+ *
+ */
 public class GroupParser extends SelectParser {
 	
 	public TermsBuilder parse(List<GroupingElement> elements, QueryState state){

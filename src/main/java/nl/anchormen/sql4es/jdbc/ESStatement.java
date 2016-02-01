@@ -8,8 +8,6 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.List;
 
-import org.elasticsearch.action.search.SearchRequestBuilder;
-
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.CreateTable;
 import com.facebook.presto.sql.tree.CreateTableAsSelect;

@@ -100,11 +100,11 @@ public class ESUpdateState {
 	public int execute(String sql, Insert insert, String index) throws SQLException{
 		if(insert.getQuery().getQueryBody() instanceof Values){
 			// parse one or multiple value sets (... VALUES (1,2,'a'), (2,4,'b'), ...)
-			List<IndexRequestBuilder> requests = this.insertValues(sql, insert, index);
+			List<IndexRequestBuilder> requests = this.requestsForInsertFromValues(sql, insert, index);
 			return execute(requests, 2500);
 		}else if(insert.getQuery().getQueryBody() instanceof QuerySpecification){
 			// insert data based on a SELECT statement
-			List<IndexRequestBuilder> requests = this.requestsForInsert(sql, insert, index);
+			List<IndexRequestBuilder> requests = this.requestsForInsertFromSelect(sql, insert, index);
 			return execute(requests, 2500);
 		}else throw new SQLException("Unknown set of values to insert ("+insert.getQuery().getQueryBody()+")");
 		
@@ -150,7 +150,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private List<IndexRequestBuilder> requestsForInsert(String sql, Insert insert, String index) throws SQLException {
+	private List<IndexRequestBuilder> requestsForInsertFromSelect(String sql, Insert insert, String index) throws SQLException {
 		queryState.buildRequest(sql, insert.getQuery().getQueryBody(), index);
 		String[] indexAndType = this.getIndexAndType(insert.getTarget().toString(), sql, "into\\s+", "\\s+select", index);
 		index = indexAndType[0];
@@ -201,7 +201,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private List<IndexRequestBuilder> insertValues(String sql, Insert insert, String index) throws SQLException {
+	private List<IndexRequestBuilder> requestsForInsertFromValues(String sql, Insert insert, String index) throws SQLException {
 		Heading heading = new Heading();
 		QueryState state = new BasicQueryState(sql, heading, this.props);
 		List<Object> values = updateParser.parse(insert, state);

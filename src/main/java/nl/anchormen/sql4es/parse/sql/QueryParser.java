@@ -35,7 +35,9 @@ import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.expression.IComparison;
 
 /**
- * Interprets the parsed query and build the appropriate ES query (a {@link SearchRequestBuilder} instance).  
+ * Interprets the parsed query and build the appropriate ES query (a {@link SearchRequestBuilder} instance). 
+ * The other parses within this package are used to parse their speicific clause (WHERE, HAVING etc)
+ *  
  * @author cversloot
  *
  */

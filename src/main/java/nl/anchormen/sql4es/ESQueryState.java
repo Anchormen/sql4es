@@ -70,17 +70,17 @@ public class ESQueryState{
 	 * Builds the Elasticsearch query to be executed on the specified indexes. This function refreshes the 
 	 * state after which it is not possible to retrieve results for any previously build queries. 
 	 * @param sql
-	 * @param indexes
+	 * @param indices
 	 * @return 
 	 * @throws SQLException
 	 */
 	@SuppressWarnings("unchecked")
-	public void buildRequest(String sql, QueryBody query, String... indexes) throws SQLException {
+	public void buildRequest(String sql, QueryBody query, String... indices) throws SQLException {
 		// remove linebreaks from sql to improve parsing robustness
 		if(this.esResponse != null && this.esResponse.getScrollId() != null){
 			client.prepareClearScroll().addScrollId(this.esResponse.getScrollId()).execute();
 		}
-		this.request = client.prepareSearch(indexes);
+		this.request = client.prepareSearch(indices);
 		Map<String, Map<String, Integer>> esInfo = (Map<String, Map<String, Integer>>)Utils.getObjectProperty(props, Utils.PROP_TABLE_COLUMN_MAP);
 		Object[] info = parser.parse(sql, query, maxRows, request, this.statement.getConnection().getClientInfo(), esInfo);
 		this.heading = (Heading)info[0];

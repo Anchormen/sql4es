@@ -23,6 +23,12 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.StringLiteral;
 
+/**
+ * A Presto {@link AstVisitor} implementation that parses GROUP BY clauses
+ * 
+ * @author cversloot
+ *
+ */
 public class HavingParser extends AstVisitor<IComparison, QueryState>{
 	
 	@Override

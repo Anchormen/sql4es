@@ -28,6 +28,13 @@ import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
 
+/**
+ * Implementation of the {@link DatabaseMetaData} interface describing an Elasticsearch cluster. Conceptually a 
+ * database is mapped to an index and tables to types. Listing all tables will thus list all types present within
+ * an index. Aliases are presented like databases and the indexes they expose as views.
+ * @author cversloot
+ *
+ */
 public class ESDatabaseMetaData implements DatabaseMetaData{
 	
 	private String host;

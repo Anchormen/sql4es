@@ -1,4 +1,4 @@
-package nl.am.esjdbc;
+package nl.anchormen.esjdbc;
 
 import java.io.IOException;
 import java.nio.file.Files;

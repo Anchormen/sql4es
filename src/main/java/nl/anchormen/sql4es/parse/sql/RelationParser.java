@@ -13,6 +13,11 @@ import com.facebook.presto.sql.tree.Table;
 
 import nl.anchormen.sql4es.QueryState;
 
+/**
+ * A Presto {@link AstVisitor} implementation that parses FROM clauses
+ * @author cversloot
+ *
+ */
 public class RelationParser extends AstVisitor<List<String> , QueryState>{
 	
 	@Override

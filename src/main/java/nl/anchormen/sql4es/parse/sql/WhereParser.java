@@ -30,6 +30,12 @@ import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.StringLiteral;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
 
+/**
+ * A Presto {@link AstVisitor} implementation that parses WHERE clauses
+ * 
+ * @author cversloot
+ *
+ */
 public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	
 	@SuppressWarnings("deprecation")
