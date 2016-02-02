@@ -190,6 +190,8 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(2, count);
+		st.close();
+		pst.close();
 	}
 	
 	@Test
@@ -257,7 +259,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(0, count);
-		
+		st.close();
 	}
 	
 	@Test
@@ -306,6 +308,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(10, count);
+		st.close();
 	}
 	
 	@Test
@@ -382,6 +385,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			assertEquals(rs.getObject("sum(bool)"), rs.getDouble(1));
 		}
 		assertEquals(1, count);
+		st.close();
 	}
 	
 	@Test
@@ -402,7 +406,6 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(3, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select _id, floatNum, doubleNum from "+type+" where (floatNum > 0 AND floatNum <= 4) OR doubleNum = 8");
 		rsm = rs.getMetaData();
 		assertEquals(3, rsm.getColumnCount());
@@ -415,7 +418,6 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(5, count);		
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select _id, floatNum, doubleNum from "+type+" where floatNum > 0 AND (floatNum <= 4 OR doubleNum = 8)");
 		rsm = rs.getMetaData();
 		assertEquals(3, rsm.getColumnCount());
@@ -428,7 +430,6 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(5, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select _id, floatNum, doubleNum from "+type+" where floatNum <> 2 OR intNum <> 3");
 		rsm = rs.getMetaData();
 		
@@ -438,7 +439,6 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(10, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select _id, floatNum, doubleNum from "+type+" where floatNum <> 2 AND intNum <> 3");
 		rsm = rs.getMetaData();
 		
@@ -447,6 +447,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(8, count);
+		st.close();
 	}
 	
 	@Test
@@ -476,6 +477,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(5, count);
+		st.close();
 	}
 	
 }

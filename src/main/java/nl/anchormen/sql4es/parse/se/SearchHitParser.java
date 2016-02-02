@@ -22,7 +22,7 @@ import nl.anchormen.sql4es.model.Utils;
  * A document that contains for example a list containing three objects will result in three rows in the
  * final resultset.
  * 
- * Which fields are read from the document depends on the fields specified in the SQL query. Selecting everyting
+ * Which fields are read from the document depends on the fields specified in the SQL query. Selecting everything
  * using a '*' will get all fields. If the root of a nested object is specified it will parse all fields of
  * that object. For example 'SELECT nestedDoc FROM type' will result in columns: nestedDoc.field1, nestedDoc.field2 etc.
  * 

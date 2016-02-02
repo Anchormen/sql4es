@@ -39,7 +39,6 @@ public class NestedSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(5, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select nestedDoc from "+type+" where nestedDoc.intNum <= 3");
 		rsm = rs.getMetaData();
 		assertEquals(12, rsm.getColumnCount());
@@ -50,7 +49,6 @@ public class NestedSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(5, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select nestedDoc.intNum from "+type+" where nestedDoc.intNum <= 3");
 		rsm = rs.getMetaData();
 		assertEquals(1, rsm.getColumnCount());
@@ -61,7 +59,6 @@ public class NestedSelectsIT extends Sql4EsBase {
 		}
 		assertEquals(5, count);
 		
-		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.intNum from "+type+" where nestedDoc.intNum <= 3");
 		rsm = rs.getMetaData();
 		assertEquals(2, rsm.getColumnCount());
@@ -70,6 +67,7 @@ public class NestedSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(5, count);
+		st.close();
 	}
 	
 	@Test
@@ -130,6 +128,7 @@ public class NestedSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(3, count);
+		st.close();
 	}
 	
 	@Test
@@ -204,6 +203,7 @@ public class NestedSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(5, count);
+		st.close();
 	}
 	
 }

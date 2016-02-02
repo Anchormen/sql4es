@@ -67,7 +67,6 @@ public class InsertIT extends Sql4EsBase {
 		flush();
 		refresh();
 		Utils.sleep(500);
-		st2 = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st2.executeQuery("Select * from mytype");
 		rsm = rs.getMetaData();
 		assertEquals(6, rsm.getColumnCount());

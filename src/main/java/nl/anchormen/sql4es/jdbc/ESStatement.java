@@ -58,6 +58,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public ResultSet executeQuery(String sql) throws SQLException {
+		if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
 		com.facebook.presto.sql.tree.Statement statement = parser.createStatement(sql);
 		if(statement instanceof Query){
@@ -85,8 +86,10 @@ public class ESStatement implements Statement {
 		com.facebook.presto.sql.tree.Statement statement = parser.createStatement(sql);
 		if(statement instanceof Query) throw new SQLException("A regular query cannot be executed as an Update");
 		if(statement instanceof Insert){
+			if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
 			return updateState.execute(sql, (Insert)statement, connection.getSchema());
 		}else if(statement instanceof Delete){
+			if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
 			return updateState.execute(sql, (Delete)statement, connection.getSchema());
 		}else if(statement instanceof CreateTable){
 			return updateState.execute(sql, (CreateTable)statement, connection.getSchema());
@@ -107,6 +110,7 @@ public class ESStatement implements Statement {
 	@Override
 	public void close() throws SQLException {
 		queryState.close();
+		updateState.close();
 	}
 
 	@Override

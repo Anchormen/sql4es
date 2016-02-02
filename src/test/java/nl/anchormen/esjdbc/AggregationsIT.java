@@ -87,6 +87,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(4.5, rs.getFloat("AVG(floatNum)"), 0.001f);
 		}
 		assertEquals(1, count);
+		st.close();
 	}
 	
 	@Test
@@ -152,6 +153,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(75, rs.getDouble(6), 1);
 		}
 		assertEquals(2, count);
+		st.close();
 	}
 	
 	@Test
@@ -290,6 +292,7 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(2, count);
+		st.close();
 	}
 	
 	@Test
@@ -373,6 +376,7 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		st.close();
 	}
 	
 	@Test
@@ -402,5 +406,6 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(100, count);
+		st.close();
 	}
 }

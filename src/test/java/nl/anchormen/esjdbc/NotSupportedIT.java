@@ -51,6 +51,7 @@ public class NotSupportedIT extends Sql4EsBase {
 			st.execute("SELECT text/100 FROM mytype");
 			assert(false);
 		}catch(Exception e){ }
+		st.close();
 	}
 	
 }

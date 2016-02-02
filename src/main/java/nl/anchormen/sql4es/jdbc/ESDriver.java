@@ -59,7 +59,7 @@ public class ESDriver implements Driver{
 			URI uri = new URI(url.substring(12));
 			String host = uri.getHost();
 			int port = (uri.getPort() < 0 ? Utils.PORT : uri.getPort());
-			String index = uri.getPath().split("/")[1];
+			String index = uri.getPath().length() == 0 ? null : uri.getPath().split("/")[1];
 			if(info == null) info = Utils.defaultProps();
 			else {
 				Properties props = Utils.defaultProps();

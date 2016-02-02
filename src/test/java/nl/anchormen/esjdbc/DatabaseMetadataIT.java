@@ -96,7 +96,7 @@ public class DatabaseMetadataIT extends Sql4EsBase {
 		String index = "index2";
 		String type = "type";
 		createIndexTypeWithDocs(index, type, true, 1 , 2);
-		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/index?test");
+		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test");
 		DatabaseMetaData md = conn.getMetaData();
 		ResultSet rs = md.getColumns(null, "index2", null, null);
 		int count = 0;
@@ -104,6 +104,5 @@ public class DatabaseMetadataIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(36, count);
-		
 	}
 }

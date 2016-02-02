@@ -401,6 +401,7 @@ public class ESUpdateState {
 		String[] indexAndType = this.getIndexAndType(create.getName().toString(), sql, "table\\s+", "\\s+\\(", index);
 		index = indexAndType[0];
 		String type = indexAndType[1];
+		if(index == null) throw new SQLException("No index & type combination specified, please use 'CREATE TABLE [index.type]' ");
 		
 		StringBuilder sb = new StringBuilder();
 		sb.append("{");
@@ -563,6 +564,11 @@ public class ESUpdateState {
 		IndicesAliasesResponse response = client.admin().indices().prepareAliases().removeAlias(indices.toArray(new String[indices.size()]), alias).get();
 		if(!response.isAcknowledged()) throw new SQLException("Elasticsearch failed to delete the specified alias");
 		return 0;
+	}
+	
+	public void close() throws SQLException{
+		this.queryState.close();
+		this.bulkList.clear();
 	}
 	
 }

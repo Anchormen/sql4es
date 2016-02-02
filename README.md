@@ -30,12 +30,17 @@ The driver can be used from code or applications able to load the jdbc driver. I
 
 ### Usage
 
-The sql4es driver can be used by adding the jar file to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. Additional hosts and other properties can be set through the URL's parameters, also see the Configuration section.
+The sql4es driver can be used by adding the jar file to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. 
+
+* host: the hostname or ip of one of the es hosts (required)
+* port: an optional the portnumber to use for the transport client (default is 9300)
+* index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (alse see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index. Any index or alias can be active later by executing 'USE [index/alias] (see below).
+* params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuraiton section of this readme for a description of all parameters.
 
 ``` java
 // register the driver and get a connection for index 'myidx'
 Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
-Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx?");
+Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx");
 Statement st = con.createStatement();
 // execute a query on mytype within myidx
 ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE somting >= 42");
@@ -53,7 +58,7 @@ con.close();
 
 ### Concepts
 
-Since elasticsearch is a nosql database it does not contain the exact relational objects most people are familiar with (like databases, tables and records). Elasticsearch does however have a similar hierarchy of objects (index, type and document). The conceptual mapping used by sql4es is the following:
+Since elasticsearch is a NO-SQL database it does not contain the exact relational objects most people are familiar with (like databases, tables and records). Elasticsearch does however have a similar hierarchy of objects (index, type and document). The conceptual mapping used by sql4es is the following:
 
 - Database = Index
 - Table = Type
@@ -158,6 +163,12 @@ Some notes on SELECT:
 - having (filtering on aggregated results) is currently performed within the driver
 - sorting of aggregated results are currently performed within the driver
 
+#### EXPLAIN
+
+Explain can be used to view the elasticsearch query executed for a SELECT statement by executing:
+
+***EXPLAIN [SELECT statement]***
+
 #### USE
 
 Sql4es uses an active index/alias. By default this is the index/alias specified within the URL used to get the connection. It is possible to change the active index/alias by executing:
@@ -193,7 +204,7 @@ CREATE TABLE index.mytype (
 )
 ```
 
-An empty index can be created using CREATE TABLE [index] (_id "type:string"). The _id field is omitted because it is a standard ES field.
+An empty index can be created using CREATE TABLE [index.type] (_id "type:string"). The _id field is omitted because it is a standard ES field.
 
 ***CREATE TABLE [(index.)type] AS SELECT ...***
 
@@ -277,3 +288,81 @@ It is possible to set parameters through the provided url. All parameters are ex
 - default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception).
 - query.cache.table (string, default 'query_cache'): the fictional table name used to indicate a query & result must be cached. Can be changed to make it shorter or more convenient 
 - result.nested.lateral (boolean, default true): specifies weather nested results must be exploded (the default) or not. Can be set to false when working with the driver from your own code. In this case a column containing a nested object (wrapped in a ResultSet) will have java.sql.Types =  Types.JAVA_OBJECT and can be used as (ResultSet)rs.getObject(colNr).
+
+### Example using SQLWorkbenchJ
+
+SQLWorkbenchJ is a SQL GUI that can be used to access an Elasticsearch cluster using the sql4es driver. Follow the steps below to set it up and execute the example statements.
+
+1. download SQLWorkbenchJ for your platform from the [website](http://www.sql-workbench.net/downloads.html)
+2. Install SQLWorkbencJ and open it
+3. Add the SQL4ES driver:
+   1. click 'Manage Drivers' in the bottom left corner
+   2. click the blank document icon on the left to add a new driver
+   3. Give the driver a descriptive name (sql4es for example)
+   4. point the Library to the sql4es jar file on your system
+   5. set 'nl.anchormen.sql4es.jdbc.ESDriver' as the Classname
+   6. set 'jdbc:sql4es://localhost:9300/index' as the sample URL
+4. Click 'Ok' to save the configuration
+5. Add a new database connection using the sql4es driver
+   1. click the 'create new connection profile' button in the top
+   2. give the profile a descriptive name
+   3. specify the sql4es driver added before
+   4. specify the url of your Elasticsearch 2.X cluster using the index 'myindex'
+   5. click the save button on the top
+6. Select the created profile and click 'Ok' to create the connection
+   1. An empty workbench will open when everything is ok.
+7. Copy the statements below into the workbench
+8. Execute the statements one by one and view the results. A brief description of each statement can be found below the SQL statements
+   1. Running all the statements as a sequence works as well but will not provide any results for the SELECT statements because the cluster is still indexing the inserts when they are being executed (remember, elasticsearch is not a relational database!)
+
+``` sql
+USE myindex;
+INSERT INTO mytype (myLong, myDouble, myDate, myText) VALUES (1, 1.25, '2016-02-01', 'Hi there!'),(10, 103.234, '2016-03-01', 'How are you?');
+
+SELECT * FROM mytype;
+SELECT _score, myLong, myText FROM mytype WHERE myText = 'hi' AND myDate > '2016-01-01';
+
+EXPLAIN SELECT _score, myLong, myText FROM mytype WHERE myText = 'hi' AND myDate > '2016-01-01';
+
+CREATE TABLE myindex2.mytype2 AS SELECT myText, myLong*10 as myLong10, myDouble FROM mytype;
+
+DELETE FROM mytype WHERE myDouble = 1.25;
+USE myindex2;
+SELECT * FROM mytype2;
+CREATE VIEW myview AS SELECT * FROM myindex, myindex2 WHERE myDouble > 2;
+USE myview;
+SELECT * FROM mytype, mytype2;
+drop view myview;
+drop table myindex;
+drop table myindex2;
+```
+
+1. use the index
+   
+2. insert two documents into the new type called mytype (the type will be created and mapping will be done dynamically by elasticsearch). Check the DatabaseExplorer option to view the mapping created.
+   
+3. show all fields present in mytype
+   
+4. execute a search and show the score
+   
+5. show the Elasticsearch query performed for the search
+   
+6. create a new index and a new type based on the documents in mytype. Note that mytype2 has some different fields than the type it was created of.
+   
+7. delete some documents
+   
+8. make the newly created index 'myindex2' the active one
+   
+9. show all documents within mytype2
+   
+10. create a view (alias) for myindex and myindex2 with a filter
+    
+11. make the newly created view the active one
+    
+12. select all documents present within the view, note that: 
+    
+    1. not all documents are shown due to the filter on the alias
+       
+    2. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
+       
+       ​

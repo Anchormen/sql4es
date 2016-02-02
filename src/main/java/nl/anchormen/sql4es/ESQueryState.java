@@ -125,8 +125,10 @@ public class ESQueryState{
 		//System.out.println(request);
 		this.esResponse = this.request.execute().actionGet();
 		//System.out.println(esResponse);
-		this.result = convertResponse(useLateral);
-		if(this.result == null) throw new SQLException("No result found for this query");
+		ESResultSet rs = convertResponse(useLateral);
+		if(rs == null) throw new SQLException("No result found for this query");
+		if(this.result != null) this.result.close();
+		this.result = rs;
 		return this.result;
 	}
 
@@ -193,6 +195,7 @@ public class ESQueryState{
 	public void close() throws SQLException {
 		if(this.esResponse != null && this.esResponse.getScrollId() != null)
 			client.prepareClearScroll().addScrollId(this.esResponse.getScrollId()).execute();
+		if(this.result != null) result.close();
 	}
 
 	/**

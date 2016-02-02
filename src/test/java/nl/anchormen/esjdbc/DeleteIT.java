@@ -61,12 +61,13 @@ public class DeleteIT extends Sql4EsBase {
 		assertEquals(5, rows);
 		flush(); refresh();
 		assertRowCount(st, type, 0);
+		st.close();
 	}
 	
 	private void assertRowCount(Statement st, String type, int expected) throws SQLException{
 		ResultSet rs = st.executeQuery("SELECT count(*) FROM "+type);
 		rs.next();
 		assertEquals(expected, rs.getInt(1));
-		rs.close();
+		st.close();
 	}
 }

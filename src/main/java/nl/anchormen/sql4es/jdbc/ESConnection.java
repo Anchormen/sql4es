@@ -104,8 +104,10 @@ public class ESConnection implements Connection{
 			}
 			
 			// check if index exists
-			boolean indexExists = client.admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists();
-			if(!indexExists) throw new SQLException("Index '"+index+"' does not exist");
+			if(index != null){
+				boolean indexExists = client.admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists();
+				if(!indexExists) throw new SQLException("Index or Alias '"+index+"' does not exist");
+			}
 			return client;
 		} catch (UnknownHostException e) {
 			throw new SQLException ("Unable to connect to "+host, e);
