@@ -17,10 +17,12 @@ Simply said it translates SQL statements to their Elasticsearch counterparts, ex
 - DROP TABLE/VIEW removes an index or alias
 - INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query 
 - DELETE FROM (WHERE): removes documents
-- USE: selects an index as its active 
-- EXPLAIN SELECT: returns the Elasticsearch query performed
+- USE: selects an index as the driver's active one (used to interpred queries)
+- EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
 
-The driver can be used from code or applications able to load the jdbc driver. It has been used succesfully with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. 
+The driver can be used from code or applications able to load the jdbc driver. It has been used succesfully with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme.
+
+![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
 
 **Not supported (yet)**
 
