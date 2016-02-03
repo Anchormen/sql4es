@@ -1,11 +1,13 @@
 ### Introduction sql4es
 
-Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata.
+Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. 
 
-Simply said it translates SQL statements to their Elasticsearch counterparts, executes them and returns the result in a ResultSet implementation. The following sql statements are supported:
+![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
+
+Simply said the sql4es driver translates SQL statements to their Elasticsearch counterparts and parses results into ResultSet implementations. The following sql statements are supported:
 
 - SELECT: fetches documents (with or without scoring) or aggregations from elasticsearch
-  * FUNCTIONS (count, min, max, sum, avg)
+  *  COUNT, MIN, MAX, SUM, AVG
   * DISTINCT
   * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR)
   * GROUP BY
@@ -33,7 +35,7 @@ Some SQL statements or Elasticsearch features that are ***not (yet) supported***
 
 ### Usage
 
-The sql4es driver can be used by adding the jar file to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. 
+The sql4es driver can be used by adding the jar file, found within the releases directory of the project, to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. 
 
 * host: the hostname or ip of one of the es hosts (required)
 * port: an optional the portnumber to use for the transport client (default is 9300)
@@ -59,9 +61,7 @@ rs.close();
 con.close();
 ```
 
-The driver can also be used from applications able to load the jdbc driver. It has been tested with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme. A screenshot of the example queries executed from sqlWorkbenchJ is shown below. 
-
-![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
+The driver can also be used from applications able to load the jdbc driver. It has been tested with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme. 
 
 ### Concepts
 
