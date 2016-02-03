@@ -17,18 +17,19 @@ Simply said it translates SQL statements to their Elasticsearch counterparts, ex
 - DROP TABLE/VIEW removes an index or alias
 - INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query 
 - DELETE FROM (WHERE): removes documents
-- USE: selects an index as the driver's active one (used to interpred queries)
+- USE: selects an index as the driver's active one (used to interpret queries)
 - EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
 
-The driver can be used from code or applications able to load the jdbc driver. It has been used succesfully with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme.
+**Remarks**
 
-![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
+Elasticsearch does not support transactions. Hence executing batches cannot be rolled back upon failure (nor can statements be committed). It also takes some time for documents to be indexed fully so executing an INSERT directly followed by a SELECT might not include the inserted documents.
 
-**Not supported (yet)**
+Some SQL statements or Elasticsearch features that are ***not (yet) supported***:
 
-* Offsets are not supported (OFFSET or LIMIT offset, number)
-* Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
-* Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
+- Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
+- Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
+- Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
+- Elasticsearch features like suggestions, templates and some im forgetting or unfamiliar with are not supported.
 
 ### Usage
 
@@ -36,8 +37,8 @@ The sql4es driver can be used by adding the jar file to the tool/application use
 
 * host: the hostname or ip of one of the es hosts (required)
 * port: an optional the portnumber to use for the transport client (default is 9300)
-* index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (alse see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index. Any index or alias can be active later by executing 'USE [index/alias] (see below).
-* params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuraiton section of this readme for a description of all parameters.
+* index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (also see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index.
+* params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuration section of this readme for a description of all parameters.
 
 ``` java
 // register the driver and get a connection for index 'myidx'
@@ -58,6 +59,10 @@ rs.close();
 con.close();
 ```
 
+The driver can also be used from applications able to load the jdbc driver. It has been tested with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme. A screenshot of the example queries executed from sqlWorkbenchJ is shown below. 
+
+![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
+
 ### Concepts
 
 Since elasticsearch is a NO-SQL database it does not contain the exact relational objects most people are familiar with (like databases, tables and records). Elasticsearch does however have a similar hierarchy of objects (index, type and document). The conceptual mapping used by sql4es is the following:
@@ -70,7 +75,7 @@ Since elasticsearch is a NO-SQL database it does not contain the exact relationa
 
 Elasticsearch responses, both search results and aggregations, are put into a ResultSet implementation. Any nested objects are 'exploded' into a lateral view by default; this means that nested objects are treated as joined tables which are put inside the he same row (see [this page](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView) for explanation). It is possible to represent nested objects as a nested ResultSet, see the Configuration section. Note, that although objects are exploded, arrays with primitives are not! They are put in a java.sql.Array implementation supported by JDBC.
 
-Sql4es works from an active index wich means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. Executing a SELECT on a type that does not exist within an index will return an empty result. It is possible to change the active index by executing *USE [otherIndex]* as described below. 
+Sql4es works from an active index which means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. Executing a SELECT on a type that does not exist within an index will return an empty result. It is possible to change the active index by executing *USE [otherIndex]* as described below. 
 
 ### QUERIES
 
@@ -113,7 +118,7 @@ SELECT DISTINCT field, count(1) FROM type
 
 **Scoring**
 
-By default queries are executed as a filter which means elasticsearch does not scores the results and they are returned in an arbitrary order. Add '_score' as one of the selected columns in order to change this behavior and request scoring. By default results are returned sorted on _score DESC (can be changed to ORDER BY _score ASC). Ordering on another field will disable scoring! In addition it is possible to get the id and type of a document by specifying _id and _type respectively.
+By default queries are executed as a filter which means elasticsearch does not scores the results and they are returned in an arbitrary order. Add '_score' as one of the selected columns in order to change this behaviour and request scoring. By default results are returned sorted on _score DESC (can be changed to ORDER BY _score ASC). Ordering on another field will disable scoring! In addition it is possible to get the id and type of a document by specifying _id and _type respectively.
 
 ``` sql
 /* request scoring, document id and document type */
@@ -135,9 +140,9 @@ Sql4es does not make a difference between searching and matching on textual fiel
 
 **Aggregation**
 
-Sql4es will request an aggregation whenever it finds a DISTINCT, GROUP BY or aggregation functions (MIN, MAX, SUM, AVG or COUNT) are requested without any normal fields. No search results are returned whenver an aggregation is requested. 
+Sql4es will request an aggregation whenever it finds a DISTINCT, GROUP BY or aggregation functions (MIN, MAX, SUM, AVG or COUNT) are requested without any normal fields. No search results are returned whenever an aggregation is requested. 
 
-Sql4es supports some basic arithmetic functions: *, /, +, - and % (modulo).  It is also possible to combine diferent fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch
+Sql4es supports some basic arithmetic functions: *, /, +, - and % (modulo).  It is also possible to combine different fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch
 
 ``` sql
 /* Aggregates on a boolean and returns the sum of an int field in desc order */
@@ -283,9 +288,9 @@ DELETE FROM mytype
 
 It is possible to set parameters through the provided url. All parameters are exposed to elastic search as well which means that is is possible to set Client parameters, see [elasticsearch docs](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/configuration.html). The following driver specific parameters can be set:
 
-- es.hosts: a comma seperated list with additional hosts with optional ports in the format host1(:port1), host2(:port2) … The default port 9300 is taken when no port is specified. 
-- fetch.size (int default 10000): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very larged.
-- scroll.timeout.sec (int, default 60): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the usecase.
+- es.hosts: a comma separated list with additional hosts with optional ports in the format host1(:port1), host2(:port2) … The default port 9300 is taken when no port is specified. 
+- fetch.size (int default 10000): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
+- scroll.timeout.sec (int, default 60): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the use case at hand.
 - query.timeout.ms (int, default 10000): the timeout set on a query. Can be altered depending on the use case.
 - default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception).
 - query.cache.table (string, default 'query_cache'): the fictional table name used to indicate a query & result must be cached. Can be changed to make it shorter or more convenient 

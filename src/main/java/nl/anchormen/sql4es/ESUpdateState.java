@@ -54,6 +54,11 @@ import nl.anchormen.sql4es.parse.sql.SelectParser;
 import nl.anchormen.sql4es.parse.sql.UpdateParser;
 import nl.anchormen.sql4es.parse.sql.WhereParser;
 
+/**
+ * Responsible for execution of update statements (CREATE, INSERT, DELETE). 
+ * @author cversloot
+ *
+ */
 public class ESUpdateState {
 
 	private final UpdateParser updateParser = new UpdateParser();
@@ -100,12 +105,10 @@ public class ESUpdateState {
 	public int execute(String sql, Insert insert, String index) throws SQLException{
 		if(insert.getQuery().getQueryBody() instanceof Values){
 			// parse one or multiple value sets (... VALUES (1,2,'a'), (2,4,'b'), ...)
-			List<IndexRequestBuilder> requests = this.requestsForInsertFromValues(sql, insert, index);
-			return execute(requests, 2500);
+			return this.insertFromValues(sql, insert, index, 2500);
 		}else if(insert.getQuery().getQueryBody() instanceof QuerySpecification){
 			// insert data based on a SELECT statement
-			List<IndexRequestBuilder> requests = this.requestsForInsertFromSelect(sql, insert, index);
-			return execute(requests, 2500);
+			return this.insertFromSelect(sql, insert, index, 2500);
 		}else throw new SQLException("Unknown set of values to insert ("+insert.getQuery().getQueryBody()+")");
 		
 	}
@@ -150,7 +153,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private List<IndexRequestBuilder> requestsForInsertFromSelect(String sql, Insert insert, String index) throws SQLException {
+	private int insertFromSelect(String sql, Insert insert, String index, int maxRequestsPerBulk) throws SQLException {
 		queryState.buildRequest(sql, insert.getQuery().getQueryBody(), index);
 		String[] indexAndType = this.getIndexAndType(insert.getTarget().toString(), sql, "into\\s+", "\\s+select", index);
 		index = indexAndType[0];
@@ -163,6 +166,7 @@ public class ESUpdateState {
 		// read the resultset (recursively if nested)
 		HashMap<String, Object> fieldValues = new HashMap<String, Object>();
 		List<IndexRequestBuilder> indexReqs = new ArrayList<IndexRequestBuilder>();
+		int indexCount = 0;
 		while(rs != null){
 			while(rs.next()){
 				for(Column col : headingToInsert.columns()){
@@ -186,12 +190,17 @@ public class ESUpdateState {
 						.setType(type)
 						.setSource(fieldValues);
 				indexReqs.add(indexReq);
+				if(indexReqs.size() >= maxRequestsPerBulk){
+					indexCount += this.execute(indexReqs, maxRequestsPerBulk);
+					indexReqs.clear();
+				}
 				fieldValues = new HashMap<String, Object>();
 			}
 			rs.close();
 			rs = queryState.moreResutls();
 		}
-		return indexReqs;
+		if(indexReqs.size() > 0) indexCount += this.execute(indexReqs, maxRequestsPerBulk);
+		return indexCount;
 	}
 	
 	/**
@@ -201,7 +210,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private List<IndexRequestBuilder> requestsForInsertFromValues(String sql, Insert insert, String index) throws SQLException {
+	private int insertFromValues(String sql, Insert insert, String index, int maxRequestsPerBulk) throws SQLException {
 		Heading heading = new Heading();
 		QueryState state = new BasicQueryState(sql, heading, this.props);
 		List<Object> values = updateParser.parse(insert, state);
@@ -216,6 +225,7 @@ public class ESUpdateState {
 		HashMap<String, Object> fieldValues = new HashMap<String, Object>(heading.getColumnCount());
 		String id = null;
 		List<IndexRequestBuilder> indexReqs = new ArrayList<IndexRequestBuilder>();
+		int indexCount = 0;
 		for(int i=0; i<values.size(); i++){
 			Object value = values.get(i);
 			Column col = heading.getColumn(i%heading.getColumnCount());
@@ -232,9 +242,14 @@ public class ESUpdateState {
 				indexReqs.add(indexReq);
 				id = null;
 				fieldValues = new HashMap<String, Object>(heading.getColumnCount());
+				if(indexReqs.size() >= maxRequestsPerBulk){
+					indexCount += this.execute(indexReqs, maxRequestsPerBulk);
+					indexReqs.clear();
+				}
 			}
 		}
-		return indexReqs;
+		if(indexReqs.size() > 0)  indexCount += this.execute(indexReqs, maxRequestsPerBulk);
+		return indexCount;
 	}
 
 	/**
@@ -355,11 +370,10 @@ public class ESUpdateState {
 	 * @throws SQLException
 	 */
 	public int execute(String sql, Delete delete, String index) throws SQLException {
-		List<DeleteRequestBuilder> requests = requestsForDelete(sql, delete, index);
-		return this.execute(requests, 2500);
+		return delete(sql, delete, index, 2500);
 	}
 	
-	private List<DeleteRequestBuilder> requestsForDelete(String sql, Delete delete, String index) throws SQLException{
+	private int delete(String sql, Delete delete, String index, int maxRequestsPerBulk) throws SQLException{
 		String type = delete.getTable().getName().toString();
 		String select = "SELECT _id FROM "+type;
 		if(delete.getWhere().isPresent()){
@@ -370,14 +384,20 @@ public class ESUpdateState {
 		this.queryState.buildRequest(select, query.getQueryBody(), index);
 		ResultSet rs = this.queryState.execute();
 		List<DeleteRequestBuilder> requests = new ArrayList<DeleteRequestBuilder>();
+		int deleteCount = 0;
 		while(rs != null){
 			while(rs.next()){
 				requests.add(client.prepareDelete(index, type, rs.getString("_id")));
+				if(requests.size() >= maxRequestsPerBulk){
+					deleteCount = this.execute(requests, maxRequestsPerBulk);
+					requests.clear();
+				}
 			}
 			rs.close();
 			rs = queryState.moreResutls();
 		}
-		return requests;
+		if(requests.size() > 0) deleteCount = this.execute(requests, maxRequestsPerBulk);
+		return deleteCount;
 	}
 
 	// ------------------------------------[ CREATE TABLE / VIEW ]--------------------------------------

@@ -29,7 +29,7 @@ import com.facebook.presto.sql.tree.SelectItem;
 import com.facebook.presto.sql.tree.SingleColumn;
 
 /**
- * Parses the SELECT part of the SQL and is responsible to fill the {@link Heading} object within the pass {@link ESQueryState}.
+ * Parses the SELECT part of the SQL and is responsible to fill the {@link Heading} object within the passed {@link ESQueryState}.
  * The heading is used throughout the parsing phase and also to interpret the response from elasticsearch. The return type of the AstVisitor 
  * (Object type) is not used.
  * 

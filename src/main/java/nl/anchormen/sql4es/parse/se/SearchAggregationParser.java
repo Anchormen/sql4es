@@ -13,6 +13,11 @@ import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.Column.Operation;
 
+/**
+ * Parses aggregation part of elasticsearch result. 
+ * @author cversloot
+ *
+ */
 public class SearchAggregationParser {
 
 	/**

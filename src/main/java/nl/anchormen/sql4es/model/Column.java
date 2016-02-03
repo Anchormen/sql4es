@@ -4,6 +4,12 @@ import java.sql.Types;
 
 import nl.anchormen.sql4es.model.expression.ICalculation;
 
+/**
+ * Represents a single column (field) to be fetched and parsed from elasticsearch.   
+ * 
+ * @author cversloot
+ *
+ */
 public class Column implements Comparable<Column>{
 	
 	public enum Operation {NONE, AVG, SUM, MIN, MAX, COUNT}

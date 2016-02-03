@@ -5,6 +5,14 @@ import java.util.Properties;
 
 import nl.anchormen.sql4es.QueryState;
 
+/**
+ * An implementation of {@link QueryState} used to hold information created during SQL parsing by the Presto parser.
+ * Most importantly it hods the {@link Heading} containing the fields to be requested which is used throughout the 
+ * query execution and parsing of results.
+ * 
+ * @author cversloot
+ *
+ */
 public class BasicQueryState implements QueryState{
 
 	private Heading heading;

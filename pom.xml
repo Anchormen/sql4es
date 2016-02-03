@@ -4,7 +4,7 @@
 
   <groupId>nl.am</groupId>
   <artifactId>sql4es</artifactId>
-  <version>0.5.2.1-SNAPSHOT</version>
+  <version>0.5.2.1</version>
   <packaging>jar</packaging>
 
   <name>sql-4-elasticsearch</name>

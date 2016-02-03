@@ -4,6 +4,12 @@ import java.sql.SQLException;
 
 import nl.anchormen.sql4es.model.Heading;
 
+/**
+ * Interface for objects holding query state information used during SQL parsing by presto
+ * 
+ * @author cversloot
+ *
+ */
 public interface QueryState {
 
 	/**

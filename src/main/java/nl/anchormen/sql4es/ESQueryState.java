@@ -28,7 +28,8 @@ import nl.anchormen.sql4es.parse.se.SearchHitParser;
 import nl.anchormen.sql4es.parse.sql.QueryParser;
 
 /**
- * This class maintains the state of a {@link ESStatement} and is used interpret queries, execute them and parse the response.
+ * This class maintains the state of a {@link ESStatement} and is used interpret SELECT statements,
+ * execute and parse them and keep {@link ResultSet} state while doing so.
  *  
  * @author cversloot
  *
@@ -169,8 +170,8 @@ public class ESQueryState{
 	
 	
 	public ResultSet moreResutls() throws SQLException {
-		result.close();
-		if(result.getOffset() + result.getNrRows() >= result.getTotal()) return null;
+		if(result != null && result.getOffset() + result.getNrRows() >= result.getTotal()) return null;
+		if(result != null) result.close();
 		if(esResponse.getScrollId() != null ){
 			esResponse = client.prepareSearchScroll(esResponse.getScrollId())
 					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)))
