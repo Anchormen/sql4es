@@ -228,14 +228,14 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 			}
 		} else req.setQuery(QueryBuilders.matchAllQuery());
 		
-		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 1000);
+		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
 		// add limit and determine to use scroll
 		if(aggregation != null) {
 			req = req.setSize(0);
 		} else if(determineLimit(limit) > 0 && determineLimit(limit)  < fetchSize){
 			req.setSize(determineLimit(limit) );
 		} else if (orderings.isEmpty()){ // scrolling does not work well with sort
-			req.setSize(fetchSize/5); // scanning results in 5 * size results... huh!?!
+			req.setSize(fetchSize); 
 			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)));
 		}
 		

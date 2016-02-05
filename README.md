@@ -1,46 +1,17 @@
-### Introduction sql4es
+### sql4es: JDBC driver for Elasticsearch
 
 Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. 
 
 ![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
 
-Simply said the sql4es driver translates SQL statements to their Elasticsearch counterparts and parses results into ResultSet implementations. The following sql statements are supported:
-
-- SELECT: fetches documents (with or without scoring) or aggregations from elasticsearch
-  *  COUNT, MIN, MAX, SUM, AVG
-  * DISTINCT
-  * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR)
-  * GROUP BY
-  * HAVING
-  * ORDER BY
-  * LIMIT (without offset, offsets are not supported by sql4es)
-- CREATE TABLE (AS) creates an index/type and optionally indexes the result of a query into it
-- CREATE VIEW (AS): creates an alias, optionally with a filter
-- DROP TABLE/VIEW removes an index or alias
-- INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query 
-- DELETE FROM (WHERE): removes documents
-- USE: selects an index as the driver's active one (used to interpret queries)
-- EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
-
-**Remarks**
-
-Elasticsearch does not support transactions. Hence executing batches cannot be rolled back upon failure (nor can statements be committed). It also takes some time for documents to be indexed fully so executing an INSERT directly followed by a SELECT might not include the inserted documents.
-
-Some SQL statements or Elasticsearch features that are ***not (yet) supported***:
-
-- Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
-- Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
-- Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
-- Elasticsearch features like suggestions, templates and some im forgetting or unfamiliar with are not supported.
-
-### Usage
+#### Usage
 
 The sql4es driver can be used by adding the jar file, found within the releases directory of the project, to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. 
 
-* host: the hostname or ip of one of the es hosts (required)
-* port: an optional the portnumber to use for the transport client (default is 9300)
-* index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (also see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index.
-* params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuration section of this readme for a description of all parameters.
+- host: the hostname or ip of one of the es hosts (required)
+- port: an optional the portnumber to use for the transport client (default is 9300)
+- index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (also see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index.
+- params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuration section of this readme for a description of all parameters.
 
 ``` java
 // register the driver and get a connection for index 'myidx'
@@ -63,6 +34,38 @@ con.close();
 
 The driver can also be used from applications able to load the jdbc driver. It has been tested with [sqlWorkbench/J](http://www.sql-workbench.net/) and [Squirrel](http://squirrel-sql.sourceforge.net/) on an Elasticsearch 2.1 cluster. A description on how to use sql4es with sqlWorkbenchJ along with a number of example queries can be found at the bottom of this readme. 
 
+### Supported SQL
+
+Simply said the sql4es driver translates SQL statements to their Elasticsearch counterparts and parses results into ResultSet implementations. The following sql statements are supported:
+
+- SELECT: fetches documents (with or without scoring) or aggregations from elasticsearch
+  * COUNT, MIN, MAX, SUM, AVG
+  * DISTINCT
+  * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR)
+  * GROUP BY
+  * HAVING
+  * ORDER BY
+  * LIMIT (without offset, offsets are not supported by sql4es)
+- CREATE TABLE (AS) creates an index/type and optionally indexes the result of a query into it
+- CREATE VIEW (AS): creates an alias, optionally with a filter
+- DROP TABLE/VIEW removes an index or alias
+- INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query 
+- DELETE FROM (WHERE): removes documents
+- USE: selects an index as the driver's active one (used to interpret queries)
+- EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
+
+**Remarks**
+
+Elasticsearch does not support transactions. Hence executing batches cannot be rolled back upon failure (nor can statements be committed). It also takes some time for documents to be indexed fully so executing an INSERT directly followed by a SELECT might not include the inserted documents.
+
+Some SQL statements or Elasticsearch features that are ***not (yet) supported***:
+
+- UPDATE is not supported
+- Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
+- Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
+- Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
+- Elasticsearch features like suggestions, templates and some im forgetting or unfamiliar with are not supported.
+
 ### Concepts
 
 Since elasticsearch is a NO-SQL database it does not contain the exact relational objects most people are familiar with (like databases, tables and records). Elasticsearch does however have a similar hierarchy of objects (index, type and document). The conceptual mapping used by sql4es is the following:
@@ -75,7 +78,7 @@ Since elasticsearch is a NO-SQL database it does not contain the exact relationa
 
 Elasticsearch responses, both search results and aggregations, are put into a ResultSet implementation. Any nested objects are 'exploded' into a lateral view by default; this means that nested objects are treated as joined tables which are put inside the he same row (see [this page](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView) for explanation). It is possible to represent nested objects as a nested ResultSet, see the Configuration section. Note, that although objects are exploded, arrays with primitives are not! They are put in a java.sql.Array implementation supported by JDBC.
 
-Sql4es works from an active index which means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. Executing a SELECT on a type that does not exist within an index will return an empty result. It is possible to change the active index by executing *USE [otherIndex]* as described below. 
+Sql4es works from an active index/alias which means that it resolves references to types from this index. If for example *myIndex* is currently active the query *SELECT * FROM sometype* will only return any results if sometype is part of myindex. Executing a SELECT on a type that does not exist within an index will return an empty result. It is possible to change the active index by executing *USE [otherIndex]* as described below. 
 
 ### QUERIES
 
@@ -89,7 +92,7 @@ SELECT [field (AS alias)] FROM [types] WHERE [condition] GROUP BY [fields] HAVIN
 ```
 
 - fields (AS alias): defines the fields to be retrieved from elasticsearch and put in the ResultSet. It is possible to use * to indicate all fields should be retrieved (including _id and _type). Fields can be addressed by their name, nested fields can be addressed  using their hierarchical names in dotted notation like: *nesteddoc.otherdoc.field*. Using a star will simply fetch all fields, also nested ones, present in a document. It is possible to specify the root of an object in order to fetch all its fields. A query like *SELECT nesteddoc FROM type* will fetch all fields present in nesteddoc. As a result it might return hundreds of columns if nesteddoc has hundreds of fields.
-- types: the types to execute the query against. This can only be types present in the index that is currently active (also see 'use' statement).
+- types: the types to execute the query against. This can only be types present in the index or alias that is currently active (also see 'use' statement).
 - condition: standard SQL condition using =, >, >=, <, <=, <>, IN and LIKE operators. Sql4es does not support the NOT operator but '<>' can be used instead. Use AND and OR to combine conditions. 
 - limit: only works on non aggregating queries. The use of offset is not supported!
 
@@ -111,8 +114,9 @@ SELECT array_of_nested_objects FROM mytype LIMIT 1
 Only types part of the active index or alias can be addressed in the FROM clause. An alias must be created if types from different indices must be accessed in a single query (see CREATE VIEW for alias creation). The *query cache* is the only exception to this rule. When the query cache identifier (default 'query_cache') is used within FROM it indicates the use of the query cache. Whenever present a query is fetched from the cache rather than executed which minimizes query time in case of time consuming queries.
 
 ``` sql
+/* fetch some data from type */
 SELECT DISTINCT field, count(1) FROM type, query_cache
-/* exactly the same as but without using the query cache */
+/* exactly the same as above but now also hitting the query cache */
 SELECT DISTINCT field, count(1) FROM type
 ```
 
@@ -142,13 +146,13 @@ Sql4es does not make a difference between searching and matching on textual fiel
 
 Sql4es will request an aggregation whenever it finds a DISTINCT, GROUP BY or aggregation functions (MIN, MAX, SUM, AVG or COUNT) are requested without any normal fields. No search results are returned whenever an aggregation is requested. 
 
-Sql4es supports some basic arithmetic functions: *, /, +, - and % (modulo).  It is also possible to combine different fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch
+Sql4es supports some basic arithmetic functions: *, /, +, - and % (modulo).  It is also possible to combine different fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch.
 
 ``` sql
 /* Aggregates on a boolean and returns the sum of an int field in desc order */
-SELECT myBool, sum(myInt) as summy ROM mytype GROUP BY myBool ORDER BY summy DESC
+SELECT myBool, sum(myInt) as summy FROM mytype GROUP BY myBool ORDER BY summy DESC
 
-/* This is the same as above*/
+/* This is the same as above */
 SELECT DISTINCT myBool, sum(myInt) as summy ROM mytype ORDER BY summy DESC
 
 /* Aggregates on a boolean and returns the sum of an int field only if it is larger than 1000 */
@@ -178,7 +182,7 @@ Explain can be used to view the elasticsearch query executed for a SELECT statem
 
 #### USE
 
-Sql4es uses an active index/alias. By default this is the index/alias specified within the URL used to get the connection. It is possible to change the active index/alias by executing:
+Sql4es uses an active index/alias. By default this is the index/alias specified within the URL used to get the connection (if any). It is possible to change the active index/alias by executing:
 
 ***USE [index / alias]***
 
@@ -186,7 +190,7 @@ All subsequent statements will be executed from the specified index/alias. This 
 
 #### CREATE & DROP
 
-Sql4es supports creation of indices (create table) and aliases (create view). These statements require knowledge of ES mechanics like mappings, type definitions and aliases. 
+Sql4es supports creation of indices, types (create table) and aliases (create view). These statements require knowledge of ES mechanics like mappings, type definitions and aliases. 
 
 ***CREATE TABLE [(index.)type] ([field] "[field definition]" (, [field2])...) WITH ([[property="value"] (, property2=...) )***
 
@@ -222,7 +226,7 @@ Creates a new index/type based on the results of a SELECT statement. The new fie
 CREATE TABLE index.mytype AS SELECT myDate as date, myString as text FROM anyType
 
 /* create a type with a (possibly expensive to calculate) aggregation result */
-CREATE TABLE index.myagg AS SELECT myField, count(1) AS count, sum(myInt) AS sum from anyType GRUP BY myField ORDER BY count DESC
+CREATE TABLE index.myagg AS SELECT myField, count(1) AS count, sum(myInt) AS sum from anyType GROUP BY myField ORDER BY count DESC
 ```
 
 ***CREATE VIEW [alias] AS SELECT * FROM [index1] (, [index2])... (WHERE [condition])***
@@ -248,7 +252,7 @@ DROP TABLE myindexindex
 DROP VIEW newalias
 ```
 
-#### Update
+#### INSERT & DELETE
 
 Describes inserting and deleting data through sql
 
@@ -289,11 +293,11 @@ DELETE FROM mytype
 It is possible to set parameters through the provided url. All parameters are exposed to elastic search as well which means that is is possible to set Client parameters, see [elasticsearch docs](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/configuration.html). The following driver specific parameters can be set:
 
 - es.hosts: a comma separated list with additional hosts with optional ports in the format host1(:port1), host2(:port2) … The default port 9300 is taken when no port is specified. 
-- fetch.size (int default 10000): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
-- scroll.timeout.sec (int, default 60): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the use case at hand.
+- fetch.size (int default 2500): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
+- scroll.timeout.sec (int, default 60): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the scenario at hand.
 - query.timeout.ms (int, default 10000): the timeout set on a query. Can be altered depending on the use case.
-- default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception).
-- query.cache.table (string, default 'query_cache'): the fictional table name used to indicate a query & result must be cached. Can be changed to make it shorter or more convenient 
+- default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception) triggered when search results are parsed.
+- query.cache.table (string, default 'query_cache'): the fictional table name used to indicate using elasticsearch query cache. Can be changed to make it shorter or more convenient.
 - result.nested.lateral (boolean, default true): specifies weather nested results must be exploded (the default) or not. Can be set to false when working with the driver from your own code. In this case a column containing a nested object (wrapped in a ResultSet) will have java.sql.Types =  Types.JAVA_OBJECT and can be used as (ResultSet)rs.getObject(colNr).
 
 ### Example using SQLWorkbenchJ
@@ -306,7 +310,7 @@ SQLWorkbenchJ is a SQL GUI that can be used to access an Elasticsearch cluster u
    1. click 'Manage Drivers' in the bottom left corner
    2. click the blank document icon on the left to add a new driver
    3. Give the driver a descriptive name (sql4es for example)
-   4. point the Library to the sql4es jar file on your system
+   4. point the Library to the sql4es jar file on your system (found within the release directory of the project)
    5. set 'nl.anchormen.sql4es.jdbc.ESDriver' as the Classname
    6. set 'jdbc:sql4es://localhost:9300/index' as the sample URL
 4. Click 'Ok' to save the configuration
@@ -314,7 +318,7 @@ SQLWorkbenchJ is a SQL GUI that can be used to access an Elasticsearch cluster u
    1. click the 'create new connection profile' button in the top
    2. give the profile a descriptive name
    3. specify the sql4es driver added before
-   4. specify the url of your Elasticsearch 2.X cluster using the index 'myindex'
+   4. specify the url of your Elasticsearch 2.X cluster using the index 'myindex' ('jdbc:sql4es://your.es.host:port/myindex'
    5. click the save button on the top
 6. Select the created profile and click 'Ok' to create the connection
    1. An empty workbench will open when everything is ok.
@@ -323,7 +327,6 @@ SQLWorkbenchJ is a SQL GUI that can be used to access an Elasticsearch cluster u
    1. Running all the statements as a sequence works as well but will not provide any results for the SELECT statements because the cluster is still indexing the inserts when they are being executed (remember, elasticsearch is not a relational database!)
 
 ``` sql
-USE myindex;
 INSERT INTO mytype (myLong, myDouble, myDate, myText) VALUES (1, 1.25, '2016-02-01', 'Hi there!'),(10, 103.234, '2016-03-01', 'How are you?');
 
 SELECT * FROM mytype;
@@ -344,29 +347,27 @@ drop table myindex;
 drop table myindex2;
 ```
 
-1. use the index
+1. insert two documents into the new type called mytype (the type will be created and mapping will be done dynamically by elasticsearch). Check the DatabaseExplorer option to view the mapping created.
    
-2. insert two documents into the new type called mytype (the type will be created and mapping will be done dynamically by elasticsearch). Check the DatabaseExplorer option to view the mapping created.
+2. show all documents present in mytype
    
-3. show all fields present in mytype
+3. execute a search and show the score
    
-4. execute a search and show the score
+4. show the Elasticsearch query performed for the search
    
-5. show the Elasticsearch query performed for the search
+5. create a new index and a new type based on the documents in mytype. Note that mytype2 has some different fieldnames than the type it was created of.
    
-6. create a new index and a new type based on the documents in mytype. Note that mytype2 has some different fields than the type it was created of.
+6. delete some documents
    
-7. delete some documents
+7. make the newly created index 'myindex2' the active one
    
-8. make the newly created index 'myindex2' the active one
+8. show all documents within mytype2
    
-9. show all documents within mytype2
+9. create a view (alias) for myindex and myindex2 with a filter
    
-10. create a view (alias) for myindex and myindex2 with a filter
+10. make the newly created view the active one
     
-11. make the newly created view the active one
-    
-12. select all documents present within the view, note that: 
+11. select all documents present within the view, note that: 
     
     1. not all documents are shown due to the filter on the alias
        

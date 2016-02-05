@@ -219,9 +219,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public int getFetchSize() throws SQLException {
-		Object o = getConnection().getClientInfo().get(Utils.PROP_FETCH_SIZE);
-		if(o != null && o instanceof Integer) return (int)o;
-		else return 10000;
+		return Utils.getIntProp(getConnection().getClientInfo(), Utils.PROP_FETCH_SIZE, 10000);
 	}
 
 	@Override

@@ -60,6 +60,7 @@ public class Heading {
 			if(column.getAlias() != null) aliasIndex.put(column.getAlias(), column);
 		}
 		// set type
+		if(column.getColumn().equals(SCORE)) column.setSqlType(Types.DOUBLE);
 		if(column.getOp() == Operation.COUNT) column.setSqlType(Types.BIGINT);
 		else if(column.getOp() == Operation.AVG || column.hasCalculation()) column.setSqlType(Types.FLOAT);
 		else if(typeIndex.containsKey(column.getColumn())){

@@ -19,7 +19,9 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -57,6 +59,7 @@ public class ESConnection implements Connection{
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private boolean autoCommit = false;
 	private boolean readOnly = true;
+	private List<ESStatement> statements = new ArrayList<ESStatement>();
 
 	/**
 	 * Builds the es {@link Client} using the provided parameters. 
@@ -187,6 +190,9 @@ public class ESConnection implements Connection{
 
 	@Override
 	public void close() throws SQLException {
+		if(isClosed()) return;
+		for(ESStatement st : this.statements) st.close();
+		statements.clear();
 		client.close();
 		this.active = false;
 	}
@@ -319,7 +325,10 @@ public class ESConnection implements Connection{
 		if(this.client == null){
 			throw new SQLException("Unable to connect on specified schema '"+this.index+"'");
 		}
-		return new ESStatement(this);
+		if(isClosed()) throw new SQLException("Connection closed");
+		ESStatement st = new ESStatement(this);
+		statements.add(st);
+		return st;
 	}
 
 	@Override
@@ -329,7 +338,11 @@ public class ESConnection implements Connection{
 		if(this.client == null){
 			throw new SQLException("Unable to connect on specified schema '"+this.index+"'");
 		}
-		return new ESPreparedStatement(this, sql);
+		if(isClosed()) throw new SQLException("Connection closed");
+		
+		ESPreparedStatement st = new ESPreparedStatement(this, sql);
+		statements.add(st);
+		return st;
 	}
 
 	@Override
@@ -344,7 +357,11 @@ public class ESConnection implements Connection{
 		if(this.client == null){
 			throw new SQLException("Unable to connect on specified schema '"+this.index+"'");
 		}
-		return new ESPreparedStatement(this, sql);
+		if(isClosed()) throw new SQLException("Connection closed");
+		
+		ESPreparedStatement st = new ESPreparedStatement(this, sql);
+		statements.add(st);
+		return st;
 	}
 
 	@Override
@@ -353,7 +370,11 @@ public class ESConnection implements Connection{
 		if(this.client == null){
 			throw new SQLException("Unable to connect on specified schema '"+this.index+"'");
 		}
-		return new ESPreparedStatement(this, sql);
+		if(isClosed()) throw new SQLException("Connection closed");
+		
+		ESPreparedStatement st = new ESPreparedStatement(this, sql);
+		statements.add(st);
+		return st;
 	}
 
 	@Override
@@ -362,7 +383,11 @@ public class ESConnection implements Connection{
 		if(this.client == null){
 			throw new SQLException("Unable to connect on specified schema '"+this.index+"'");
 		}
-		return new ESPreparedStatement(this, sql);
+		if(isClosed()) throw new SQLException("Connection closed");
+		
+		ESPreparedStatement st = new ESPreparedStatement(this, sql);
+		statements.add(st);
+		return st;
 	}
 
 	@Override

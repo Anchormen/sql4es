@@ -49,6 +49,7 @@ import com.facebook.presto.sql.tree.Values;
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.parse.sql.RelationParser;
 import nl.anchormen.sql4es.parse.sql.SelectParser;
 import nl.anchormen.sql4es.parse.sql.UpdateParser;
@@ -105,10 +106,10 @@ public class ESUpdateState {
 	public int execute(String sql, Insert insert, String index) throws SQLException{
 		if(insert.getQuery().getQueryBody() instanceof Values){
 			// parse one or multiple value sets (... VALUES (1,2,'a'), (2,4,'b'), ...)
-			return this.insertFromValues(sql, insert, index, 2500);
+			return this.insertFromValues(sql, insert, index, Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 2500));
 		}else if(insert.getQuery().getQueryBody() instanceof QuerySpecification){
 			// insert data based on a SELECT statement
-			return this.insertFromSelect(sql, insert, index, 2500);
+			return this.insertFromSelect(sql, insert, index, Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 2500));
 		}else throw new SQLException("Unknown set of values to insert ("+insert.getQuery().getQueryBody()+")");
 		
 	}
@@ -360,7 +361,7 @@ public class ESUpdateState {
 	 * <ol>
 	 * <li>fetch document _id's that match the query</li>
 	 * <li>add deletion of each id to a bulk request</li>
-	 * <li>execute bulk request when it contains 2500 items (and continue)</li>
+	 * <li>execute bulk request when it contains fetch.size items (see {@link Utils}) and continue</li>
 	 * <li>execute bulk when all _id's have been added</li>
 	 * </ol>
 	 * @param sql
@@ -370,7 +371,7 @@ public class ESUpdateState {
 	 * @throws SQLException
 	 */
 	public int execute(String sql, Delete delete, String index) throws SQLException {
-		return delete(sql, delete, index, 2500);
+		return delete(sql, delete, index, Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 2500));
 	}
 	
 	private int delete(String sql, Delete delete, String index, int maxRequestsPerBulk) throws SQLException{

@@ -5,15 +5,20 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 
-import org.junit.After;
 import org.junit.Test;
 
 import nl.anchormen.sql4es.model.Utils;
 
+/**
+ * Suppose to test create statements but using ES's integration test randomly crashes or runs forever on these
+ * statements. Hence commented out until a solution can be found. 
+ * 
+ * @author cversloot
+ *
+ */
 public class CreateIT extends Sql4EsBase {
 
 	private String index = "testindex";
@@ -57,8 +62,10 @@ public class CreateIT extends Sql4EsBase {
 			rs.getDate("myDate");
 		}
 		assertEquals(3, count);
+		st.close();
 	}
-
+	
+	
 	@Test
 	public void createAs() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10);
@@ -72,11 +79,10 @@ public class CreateIT extends Sql4EsBase {
 		Utils.sleep(1000);
 		
 		ResultSet rs = st.executeQuery("SELECT * FROM type2");
-		System.out.println(rs);
 		ResultSetMetaData rsm = rs.getMetaData();
 		assertEquals(13, rsm.getColumnCount());
+		st.close();
 	}
-	
 	*/
 	
 }

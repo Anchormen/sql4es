@@ -14,7 +14,7 @@ public class Utils {
 	public static final String CALCULATION_PREFIX = "Calculation_";
 	public static final String CATALOG_SEPARATOR = ".";
 	public static final int DRIVER_MAJOR_VERSION = 0;
-	public static final int DRIVER_MINOR_VERSION = 2;
+	public static final int DRIVER_MINOR_VERSION = 5;
 	
 	// connection defaults
 	public static final String PREFIX = "jdbc:sql4es:";
