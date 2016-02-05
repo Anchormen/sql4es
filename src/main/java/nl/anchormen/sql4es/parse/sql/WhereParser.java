@@ -38,7 +38,6 @@ import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
  */
 public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	
-	@SuppressWarnings("deprecation")
 	@Override
 	protected QueryBuilder visitExpression(Expression node, QueryState state) {
 		if( node instanceof LogicalBinaryExpression){
@@ -56,58 +55,98 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			return bqb;
 		}else if( node instanceof ComparisonExpression){
 			ComparisonExpression compareExp = (ComparisonExpression)node;
-			String variable = getVariableName(compareExp.getLeft());
-			variable = getFieldName(variable, state);
-
-			if(compareExp.getRight() instanceof QualifiedNameReference || compareExp.getRight() instanceof DereferenceExpression){
-				state.addException("Matching two columns is not supported : "+compareExp);
-				return null;
-			}
-			// get value of the expression
-			Object value = getLiteralValue(compareExp.getRight(), state);
-			if(state.hasException()) return null;
-			
-			QueryBuilder comparison = null;
-			if(compareExp.getType() == ComparisonExpression.Type.EQUAL){
-				if(value instanceof String) comparison = queryForString(variable, (String)value);
-				else comparison = QueryBuilders.termQuery(variable, value);
-			}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN_OR_EQUAL){
-				comparison = QueryBuilders.rangeQuery(variable).from(value);
-			}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN_OR_EQUAL){
-				comparison = QueryBuilders.rangeQuery(variable).to(value);
-			}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN){
-				comparison = QueryBuilders.rangeQuery(variable).gt(value);
-			}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN){
-				comparison = QueryBuilders.rangeQuery(variable).lt(value);
-			}else if(compareExp.getType() == ComparisonExpression.Type.NOT_EQUAL){
-				comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(variable, value));
-			};
-			return comparison;
+			return this.processComparison(compareExp, state);
 		}else if( node instanceof NotExpression){
 			state.addException("NOT is currently not supported, use '<>' instead");
 			return null;
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
 			field = getFieldName(field, state);
+			if(field.equals(Heading.ID)){
+				state.addException("Matching document _id using LIKE is not supported");
+				return null;
+			}
 			String query = ((StringLiteral)((LikePredicate)node).getPattern()).getValue();
 			return queryForString(field, query);
 		}else if (node instanceof InPredicate){
-			String field = getVariableName(((InPredicate)node).getValue());
-			field = getFieldName(field, state);
+			return this.processIn((InPredicate)node, state);
 			
-			InListExpression list = (InListExpression)((InPredicate)node).getValueList();
-			List<Object> values = new ArrayList<Object>();
-			for(Expression listItem : list.getValues()){
-				Object value = this.getLiteralValue(listItem, state);
-				if(state.hasException()) return null;
-				values.add(value);
-			}
-			return QueryBuilders.termsQuery(field, values);
 		}else 
 			state.addException("Unable to parse "+node+" ("+node.getClass().getName()+") is not a supported expression");
 		return null;
 	}
 	
+
+	/**
+	 * Parses predicats of types =, >, >=, <, <= and <>
+	 * @param compareExp
+	 * @param state
+	 * @return
+	 */
+	private QueryBuilder processComparison(ComparisonExpression compareExp, QueryState state) {
+		String field = getVariableName(compareExp.getLeft());
+		field = getFieldName(field, state);
+
+		if(compareExp.getRight() instanceof QualifiedNameReference || compareExp.getRight() instanceof DereferenceExpression){
+			state.addException("Matching two columns is not supported : "+compareExp);
+			return null;
+		}
+		// get value of the expression
+		Object value = getLiteralValue(compareExp.getRight(), state);
+		if(state.hasException()) return null;
+		
+		QueryBuilder comparison = null;
+		if(compareExp.getType() == ComparisonExpression.Type.EQUAL){
+			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(
+						state.getRelations().toArray(new String[state.getRelations().size()])
+					).ids((String)value);
+			else if(value instanceof String) comparison = queryForString(field, (String)value);
+			else comparison = QueryBuilders.termQuery(field, value);
+		}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN_OR_EQUAL){
+			comparison = QueryBuilders.rangeQuery(field).from(value);
+		}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN_OR_EQUAL){
+			comparison = QueryBuilders.rangeQuery(field).to(value);
+		}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN){
+			comparison = QueryBuilders.rangeQuery(field).gt(value);
+		}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN){
+			comparison = QueryBuilders.rangeQuery(field).lt(value);
+		}else if(compareExp.getType() == ComparisonExpression.Type.NOT_EQUAL){
+			if(field.equals(Heading.ID)){
+				state.addException("Matching document _id using '<>' is not supported");
+				return null;
+			}
+			comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(field, value));
+		};
+		return comparison;
+	}
+
+	/**
+	 * Parses predicates of type IN (...)
+	 * @param node
+	 * @param state
+	 * @return
+	 */
+	private QueryBuilder processIn(InPredicate node, QueryState state) {
+		String field = getVariableName(node.getValue());
+		field = getFieldName(field, state);
+		if(!(node.getValueList() instanceof InListExpression)){
+			state.addException("SELECT ... IN can only be used with a list of values");
+			return null;
+		}
+		InListExpression list = (InListExpression)(node).getValueList();
+		List<Object> values = new ArrayList<Object>();
+		for(Expression listItem : list.getValues()){
+			Object value = this.getLiteralValue(listItem, state);
+			if(state.hasException()) return null;
+			values.add(value);
+		}
+		if(field.equals(Heading.ID)) {
+			String[] ids = new String[values.size()];
+			return QueryBuilders.idsQuery(state.getRelations().toArray(new String[state.getRelations().size()])).addIds(values.toArray(ids));
+		}
+		return QueryBuilders.termsQuery(field, values);
+	}
+
 	/**
 	 * extracts a variable name from the provided expression
 	 * @param e

@@ -84,7 +84,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	@Override
 	protected Object[] visitQuerySpecification(QuerySpecification node, SearchRequestBuilder searchReq){
 		this.heading = new Heading();
-		QueryState state = new BasicQueryState(sql, heading, props);
+		BasicQueryState state = new BasicQueryState(sql, heading, props);
 		int limit = -1;
 		List<String> relations = new ArrayList<String>();
 		AggregationBuilder aggregation = null;
@@ -121,6 +121,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 				}
 			}
 			heading.setTypes(this.typesForColumns(relations));
+			state.setRelations(relations);
 		}
 		
 		// get columns to fetch (builds the header)

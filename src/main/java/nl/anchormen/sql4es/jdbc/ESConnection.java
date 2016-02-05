@@ -75,7 +75,11 @@ public class ESConnection implements Connection{
 		this.host = host;
 		this.props = props;
 		this.client = buildClient();
-		this.getTypeMap(); // loads types into properties
+		try{
+			this.getTypeMap(); // loads types into properties
+		}catch(Exception e){
+			throw new SQLException("Unable to connect to specified elasticsearch host(s)", e);
+		}
 	}
 	
 	/**

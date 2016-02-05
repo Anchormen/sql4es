@@ -49,7 +49,7 @@ Simply said the sql4es driver translates SQL statements to their Elasticsearch c
 - CREATE TABLE (AS) creates an index/type and optionally indexes the result of a query into it
 - CREATE VIEW (AS): creates an alias, optionally with a filter
 - DROP TABLE/VIEW removes an index or alias
-- INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query 
+- INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query. Possible to UPDATE documents using INSERT by specifying existing document _id's
 - DELETE FROM (WHERE): removes documents
 - USE: selects an index as the driver's active one (used to interpret queries)
 - EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
@@ -60,7 +60,8 @@ Elasticsearch does not support transactions. Hence executing batches cannot be r
 
 Some SQL statements or Elasticsearch features that are ***not (yet) supported***:
 
-- UPDATE is not supported
+- UPDATE is not supported, although it is possible to update documents by inserting values for an existing _id
+- Not possible to INSERT nestested objects
 - Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
 - Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
 - Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
@@ -141,6 +142,17 @@ Sql4es does not make a difference between searching and matching on textual fiel
 - multiple words will be put in a MatchPhraseQuery (example: myString = 'hello there')
 - presence of wildcards (% and \_) will trigger the use of a WildcardQuery (% is replaced with * and _ with ?). Examples: mystring = '%something' is the same as mystring LIKE '%something')
 - the use of IN (…) will be put in a TermsQuery
+
+**Get document by _id**
+
+It is possible to execute searches for document id's by specifying '=' or IN predicates on the _id field. It is possible to combine the match on an _id with other fields but matching multiple _id should always be done using IN.
+
+``` sql
+SELECT * FROM mytype WHERE _id = 'whatever_id'
+SELECT * FROM mytype WHERE _id = 'whatever_id' AND myInt > 3
+SELECT * FROM mytype WHERE _id = 'whatever_id' OR _id = 'another_ID' /* WRONG */
+SELECT * FROM mytype WHERE _id IN ('whatever_id', 'another_ID') /* CORRECT */
+```
 
 **Aggregation**
 
@@ -258,7 +270,7 @@ Describes inserting and deleting data through sql
 
 ***INSERT INTO (index.)type ([field1], [field2]...) VALUES ([value1], [value2], ...), ([value1], ...), …***
 
-Adds one or more documents to the specified type within the index. Fields must be defined and the number of values must match the number of fields defined. It is possible to add multiple documents within a single INSERT statement
+Adds one or more documents to the specified type within the index. Fields must be defined and the number of values must match the number of fields defined. It is possible to add multiple documents within a single INSERT statement. It is possible to specify the _id field within the insert statement. In this case it will force elasticsearch to insert the specified document id. The insert acts as an UPDATE if the _id already exists! It is not possible to insert nested objects as they cannot be specified in the SQL language.
 
 ***INSERT INTO  (index.)type SELECT …***
 
@@ -270,6 +282,9 @@ INSERT INTO mytype (myInt, myDouble, myString) VALUES (1, 1.0, 'hi there'), (2, 
 
 /* insert a single document */
 INSERT INTO mytype (myInt, myDouble, myString) VALUES (3, 3.0, 'bye, bye')
+
+/* update or insert a document with specified _id */
+INSERT INTO mytype (_id, myInt, myDouble) VALUES ('some_document_id', 4, 4.0)
 
 /* copy records from anotherindex.mytype to myindex.mytype that meet a certain condition */
 USE anotherindex

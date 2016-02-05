@@ -11,7 +11,6 @@ import nl.anchormen.sql4es.ESQueryState;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
-import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.ColumnReference;
 import nl.anchormen.sql4es.model.expression.ICalculation;
@@ -91,9 +90,11 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			return new Column(column, Operation.valueOf(operator.trim().toUpperCase()), state.getHeading().getColumnCount());
 		}else if(node instanceof ArithmeticBinaryExpression){
 			// resolve expressions within select such as (sum(x)/10)%3
+			String colName = ((ArithmeticBinaryExpression)node).toString().trim().replaceAll("\"", "");
+			colName = colName.substring(1, colName.lastIndexOf(')'));
 			ICalculation calc = new ArithmeticParser().visitArithmeticBinary((ArithmeticBinaryExpression)node, state);
 			if(state.hasException()) return null;
-			Column calcCol = new Column(Utils.CALCULATION_PREFIX+state.getHeading().getColumnCount(), state.getHeading().getColumnCount());
+			Column calcCol = new Column(colName, state.getHeading().getColumnCount());
 			calcCol.setCalculation(calc);
 			return calcCol;
 		}else{

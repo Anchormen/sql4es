@@ -1,6 +1,7 @@
 package nl.anchormen.sql4es;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import nl.anchormen.sql4es.model.Heading;
 
@@ -56,5 +57,11 @@ public interface QueryState {
 	 * @return
 	 */
 	public String getProperty(String name, String def);
+
+	/**
+	 * Gets set of relations being accessed in the query (if any)
+	 * @return
+	 */
+	public List<String> getRelations();
 	
 }

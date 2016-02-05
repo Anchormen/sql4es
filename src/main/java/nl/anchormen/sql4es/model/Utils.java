@@ -11,7 +11,6 @@ public class Utils {
 	public static final int ES_MINOR_VERSION = 1;
 	public static final String ELASTICSEARCH_NAME = "Elasticsearch";
 	public static final String ELASTICSEARCH_VERSION = "2.1";
-	public static final String CALCULATION_PREFIX = "Calculation_";
 	public static final String CATALOG_SEPARATOR = ".";
 	public static final int DRIVER_MAJOR_VERSION = 0;
 	public static final int DRIVER_MINOR_VERSION = 5;

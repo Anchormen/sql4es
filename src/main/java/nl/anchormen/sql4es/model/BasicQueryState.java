@@ -1,6 +1,8 @@
 package nl.anchormen.sql4es.model;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import nl.anchormen.sql4es.QueryState;
@@ -13,12 +15,13 @@ import nl.anchormen.sql4es.QueryState;
  * @author cversloot
  *
  */
-public class BasicQueryState implements QueryState{
+public class BasicQueryState implements QueryState {
 
 	private Heading heading;
 	private Properties props;
 	private String sql;
 	private SQLException exception = null;
+	private List<String> relations = new ArrayList<String>();
 
 	public BasicQueryState(String sql, Heading heading, Properties props){
 		this.heading = heading;
@@ -36,6 +39,15 @@ public class BasicQueryState implements QueryState{
 		return heading;
 	}
 
+	@Override
+	public List<String> getRelations(){
+		return this.relations ;
+	}
+	
+	public void setRelations(List<String> relations){
+		this.relations = relations;
+	}
+	
 	@Override
 	public void addException(String msg) {
 		this.exception = new SQLException(msg);		

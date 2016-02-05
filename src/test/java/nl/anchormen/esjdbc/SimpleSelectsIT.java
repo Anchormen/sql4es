@@ -13,6 +13,8 @@ import org.elasticsearch.test.ESIntegTestCase.ClusterScope;
 import org.elasticsearch.test.ESIntegTestCase.Scope;
 import org.junit.Test;
 
+import nl.anchormen.sql4es.model.Utils;
+
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
 public class SimpleSelectsIT extends Sql4EsBase {
 	
@@ -480,4 +482,46 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		st.close();
 	}
 	
+	@Test
+	public void getID() throws Exception{
+		
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		int res = st.executeUpdate("INSERT INTO mytype (_id, myInt) VALUES ('id1', 1), ('id2', 2)");
+		assertEquals(2, res);
+		flush();
+		refresh();
+		Utils.sleep(1000);
+		
+		ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'no-valid-id'");
+		int count = 0;
+		while(rs.next()) count++;
+		assertEquals(0, count);
+		
+		rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'id1'");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(1, count);
+		
+		rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'id1' AND myInt > 2");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(0, count);
+		
+		rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'id1' OR myInt >= 2");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(2, count);
+		
+		rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'id1' AND myInt < 2");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(1, count);
+		
+		rs = st.executeQuery("SELECT * FROM mytype WHERE _id IN ('id1', 'id2', 'whateverid')");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(2, count);
+		st.close();
+	}
+		
 }

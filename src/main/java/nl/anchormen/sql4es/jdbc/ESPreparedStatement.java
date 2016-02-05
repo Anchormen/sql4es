@@ -122,6 +122,7 @@ public class ESPreparedStatement extends ESStatement implements PreparedStatemen
 
 	@Override
 	public void setString(int parameterIndex, String x) throws SQLException {
+		// TODO: escape
 		this.sqlAndParams[(parameterIndex*2) - 1] = "'"+x+"'";
 	}
 
@@ -185,8 +186,7 @@ public class ESPreparedStatement extends ESStatement implements PreparedStatemen
 
 	@Override
 	public void addBatch() throws SQLException {
-		// TODO Auto-generated method stub
-		
+		super.addBatch(this.buildSql());
 	}
 
 	@Override
