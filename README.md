@@ -2,7 +2,7 @@
 
 Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. 
 
-![SQLWorkbenchJ screenshot with examples](workbench_examples.png)
+![SQLWorkbenchJ screenshot with examples](release/workbench_examples.png)
 
 #### Usage
 
