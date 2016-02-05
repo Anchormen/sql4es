@@ -192,7 +192,7 @@ All subsequent statements will be executed from the specified index/alias. This 
 
 Sql4es supports creation of indices, types (create table) and aliases (create view). These statements require knowledge of ES mechanics like mappings, type definitions and aliases. 
 
-***CREATE TABLE [(index.)type] ([field] "[field definition]" (, [field2])...) WITH ([[property="value"] (, property2=...) )***
+***CREATE TABLE (index.)type ([field] "[field definition]" (, [field2])...) WITH (property="value" (, property2=...) )***
 
 This creates a mapping for [type] within the currently active index or in the index specified using dot notation. Whenever dotnotation is used it is assumed the part before the first dot refers to the index. If the index specified already exists it just adds the type to this index.
 
@@ -215,9 +215,9 @@ CREATE TABLE index.mytype (
 )
 ```
 
-An empty index can be created using CREATE TABLE [index.type] (_id "type:string"). The _id field is omitted because it is a standard ES field.
+An empty index can be created using CREATE TABLE index.type (_id "type:string"). The _id field is omitted because it is a standard ES field.
 
-***CREATE TABLE [(index.)type] AS SELECT ...***
+***CREATE TABLE (index.)type AS SELECT ...***
 
 Creates a new index/type based on the results of a SELECT statement. The new fieldnames are taken from the SELECT, it is possible to use column-aliases to influence the fieldnames. For example CREATE TABLE myaverage AS SELECT avg(somefield) AS average will result in a new type myaverage within the currently active index with a single Double field called 'average'. Note that this is a two step process taking place at the driver. First the query is executed and secondly the index is created and results are written (in bulk) to the new type.
 
@@ -229,7 +229,7 @@ CREATE TABLE index.mytype AS SELECT myDate as date, myString as text FROM anyTyp
 CREATE TABLE index.myagg AS SELECT myField, count(1) AS count, sum(myInt) AS sum from anyType GROUP BY myField ORDER BY count DESC
 ```
 
-***CREATE VIEW [alias] AS SELECT * FROM [index1] (, [index2])... (WHERE [condition])***
+***CREATE VIEW [alias] AS SELECT * FROM index1 (, [index2])... (WHERE [condition])***
 
 Creates a new ES alias containing the specified indexes or adds the indexes to an existing alias. The optional WHERE clause adds a filter on the index-alias pairs specified. See the [elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html) for information on aliases
 
@@ -256,11 +256,11 @@ DROP VIEW newalias
 
 Describes inserting and deleting data through sql
 
-***INSERT INTO [(index.)type] ([field1], [field2]...) VALUES ([value1], [value2], ...), ([value1], ...), …***
+***INSERT INTO (index.)type ([field1], [field2]...) VALUES ([value1], [value2], ...), ([value1], ...), …***
 
 Adds one or more documents to the specified type within the index. Fields must be defined and the number of values must match the number of fields defined. It is possible to add multiple documents within a single INSERT statement
 
-***INSERT INTO  [(index.)type] SELECT …***
+***INSERT INTO  (index.)type SELECT …***
 
 Adds all of the results from the SELECT statement to the specified type within the index. Fieldnames to insert are taken from the result (i.e. column aliases can be used). Note that, similar to the 'CREATE TABLE .. AS SELECT' the results are pulled into the driver and then indexed (using Bulk).
 
@@ -276,7 +276,7 @@ USE anotherindex
 INSERT INTO myindex.mytype SELECT * from newtype WHERE myInt < 3 
 ```
 
-***DELETE FROM [type] (WHERE [condition])***
+***DELETE FROM type (WHERE [condition])***
 
 Deletes all documents from the specified type that meet the condition. If no WHERE clause is specified all documents will be removed. As Elasticsearch can only delete documents based on their \_id which means that this statement is executed in two steps. First collect all _id's from documents that meet the condition, secondly delete those documents using the bulk API
 
