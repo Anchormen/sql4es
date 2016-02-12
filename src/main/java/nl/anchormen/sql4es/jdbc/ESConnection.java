@@ -203,7 +203,7 @@ public class ESConnection implements Connection{
 
 	@Override
 	public boolean isClosed() throws SQLException {
-		return active;
+		return !active;
 	}
 
 	@Override
