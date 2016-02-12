@@ -7,14 +7,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.elasticsearch.common.text.Text;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.highlight.HighlightField;
 
 import nl.anchormen.sql4es.ESArray;
 import nl.anchormen.sql4es.ESResultSet;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
+import nl.anchormen.sql4es.model.Column.Operation;
 
 /**
  * Responsible to parse {@link SearchHits} from an elasticsearch result into an {@link ESResultSet}. 
@@ -44,7 +47,7 @@ public class SearchHitParser {
 		ESResultSet rs = new ESResultSet(head, (int)total, rowLength);
 		rs.setOffset((int)offset);
 		for(SearchHit hit : hits){
-			this.parse(hit.getSource(), rs, useLateral, "", headMap, new Object[]{hit.getId(), hit.getIndex(), hit.getType(), hit.getScore()});
+			this.parse(hit.getSource(), hit, rs, useLateral, "", headMap);
 		}
 		
 		if(useLateral){
@@ -88,6 +91,7 @@ public class SearchHitParser {
 		if(heading.hasAllCols()) headingIndex.get("").setAllColls(true);
 		return headingIndex;
 	}
+	
 	/**
 	 * Splits a name formatted like a.b.c into a parent 'a.b' and key 'c' for a given index (2 in this example)
 	 * @param name
@@ -112,11 +116,12 @@ public class SearchHitParser {
 	 * @param rs
 	 * @throws SQLException 
 	 */
+	//new Object[]{hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), hit.getHighlightFields()}
 	@SuppressWarnings("unchecked")
-	private void parse(Map<String, ?> source, ESResultSet rs, boolean explode, String parent, Map<String, Heading> headMap, Object... idIndexTypeScore) throws SQLException{
+	private void parse(Map<String, ?> source, SearchHit hit, ESResultSet rs, boolean explode, String parent, Map<String, Heading> headMap) throws SQLException{
 		Heading head = rs.getHeading();
 		List<Object> row = rs.getNewRow();
-		if(idIndexTypeScore != null && idIndexTypeScore.length> 0) addIdIndexAndType(idIndexTypeScore, head, row);
+		if(hit != null) addIdIndexAndType(hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), hit.getHighlightFields(), head, row);
 		for(String key : source.keySet()){
 			String fullKey = parent.length()>0 ? parent+"."+key : key;
 
@@ -222,18 +227,27 @@ public class SearchHitParser {
 	 * @param head
 	 * @param row
 	 */
-	private void addIdIndexAndType(Object[] idIndexTypeScore, Heading head, List<Object> row){
-		if(idIndexTypeScore[0] != null && head.hasAllCols() || head.hasLabel(Heading.ID)){
-			row.set( head.getColumnByLabel(Heading.ID).getIndex(), idIndexTypeScore[0]);
+	private void addIdIndexAndType(String id, String index, String type, Float score, Map<String, HighlightField> highlights, Heading head, List<Object> row){
+		if(id != null && head.hasAllCols() || head.hasLabel(Heading.ID)){
+			row.set( head.getColumnByLabel(Heading.ID).getIndex(), id);
 		}
-		if(idIndexTypeScore[1] != null && head.hasAllCols() || head.hasLabel(Heading.INDEX)){
-			row.set( head.getColumnByLabel(Heading.INDEX).getIndex(), idIndexTypeScore[1]);
+		if(index != null && head.hasAllCols() || head.hasLabel(Heading.INDEX)){
+			row.set( head.getColumnByLabel(Heading.INDEX).getIndex(), index);
 		}
-		if(idIndexTypeScore[2] != null && head.hasAllCols() || head.hasLabel(Heading.TYPE)){
-			row.set( head.getColumnByLabel(Heading.TYPE).getIndex(), idIndexTypeScore[2]);
+		if(type != null && head.hasAllCols() || head.hasLabel(Heading.TYPE)){
+			row.set( head.getColumnByLabel(Heading.TYPE).getIndex(), type);
 		}
-		if(idIndexTypeScore[3] != null && head.hasLabel(Heading.SCORE)){
-			row.set( head.getColumnByLabel(Heading.SCORE).getIndex(), idIndexTypeScore[3]);
+		if(score != null && head.hasLabel(Heading.SCORE)){
+			row.set( head.getColumnByLabel(Heading.SCORE).getIndex(), score);
+		}
+		if(highlights != null){
+			for(String field : highlights.keySet()){
+				Column col = head.getColumnByNameAndOp(field, Operation.HIGHLIGHT);
+				if(col == null) continue;
+				List<Object> fragments = new ArrayList<Object>();
+				for(Text fragment : highlights.get(field).getFragments()) fragments.add(fragment.toString());
+				row.set(col.getIndex(), new ESArray(fragments));
+			}
 		}
 	}
 	
@@ -275,7 +289,7 @@ public class SearchHitParser {
 		}
 		ESResultSet nestedRs = new ESResultSet(nestedHeading, nestedObjects.length, 1000);
 		for(Object object : nestedObjects){
-			parse((Map<String, ?>)object, nestedRs, explode, parent, headMap);
+			parse((Map<String, ?>)object, null, nestedRs, explode, parent, headMap);
 		}
 		Column col = heading.getColumnByLabel(key);
 		if(col == null){

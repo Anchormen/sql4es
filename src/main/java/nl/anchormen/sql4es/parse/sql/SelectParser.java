@@ -86,8 +86,13 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				column = visitDereferenceExpression((DereferenceExpression)fc.getArguments().get(0) );
 			else {
 				 column = ((QualifiedNameReference)fc.getArguments().get(0)).getName().toString();
-			}	
-			return new Column(column, Operation.valueOf(operator.trim().toUpperCase()), state.getHeading().getColumnCount());
+			}
+			try{
+				return new Column(column, Operation.valueOf(operator.trim().toUpperCase()), state.getHeading().getColumnCount());
+			}catch(Exception e){
+				state.addException("Unable to parse function due to: "+e.getMessage());
+				return null;
+			}
 		}else if(node instanceof ArithmeticBinaryExpression){
 			// resolve expressions within select such as (sum(x)/10)%3
 			String colName = ((ArithmeticBinaryExpression)node).toString().trim().replaceAll("\"", "");

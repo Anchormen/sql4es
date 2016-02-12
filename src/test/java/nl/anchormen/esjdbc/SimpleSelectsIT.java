@@ -523,5 +523,37 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		assertEquals(2, count);
 		st.close();
 	}
+	
+	@Test
+	public void search() throws Exception{
+		createIndexTypeWithDocs(index, type, true, 10);
+		
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		ResultSet rs = st.executeQuery("SELECT _score, text FROM "+type+" WHERE _search = 'text.analyzed:document'");
+		ResultSetMetaData rsm = rs.getMetaData();
+		assertEquals(2, rsm.getColumnCount());
+		assertEquals(Types.DOUBLE, rsm.getColumnType(1));
+		assertEquals(Types.VARCHAR, rsm.getColumnType(2));
+		int count = 0;
+		while(rs.next()){
+			count++;
+		}
+		assertEquals(10, count);
+		
+		rs = st.executeQuery("SELECT _score, text FROM "+type+" WHERE _search = 'text.analyzed:document' AND intNum > 5");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(4, count);
+		
+		rs = st.executeQuery("SELECT _score, highlight(text.analyzed), intNum%2, text FROM "+type+" WHERE _search = 'text.analyzed:document' AND intNum > 5");
+		 rsm = rs.getMetaData();
+		assertEquals(4, rsm.getColumnCount());
+		assertEquals(Types.DOUBLE, rsm.getColumnType(1));
+		assertEquals(Types.ARRAY, rsm.getColumnType(2));
+		assertEquals(Types.FLOAT, rsm.getColumnType(3));
+		assertEquals(Types.VARCHAR, rsm.getColumnType(4));
+
+		st.close();
+	}
 		
 }

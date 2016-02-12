@@ -19,9 +19,11 @@ import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 
 import nl.anchormen.sql4es.jdbc.ESStatement;
+import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
 import nl.anchormen.sql4es.model.Utils;
+import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.IComparison;
 import nl.anchormen.sql4es.parse.se.SearchAggregationParser;
 import nl.anchormen.sql4es.parse.se.SearchHitParser;
@@ -88,6 +90,14 @@ public class ESQueryState{
 		if(info[1] != null) having = (IComparison)info[1];
 		if(info[2] != null) orderings = (List<OrderBy>)info[2];
 		this.limit = (int)info[3];
+		
+		// add highlighting
+		for(Column column : heading.columns()){
+			if(column.getOp() == Operation.HIGHLIGHT){
+				request.addHighlightedField(column.getColumn(), Utils.getIntProp(props, Utils.PROP_FRAGMENT_SIZE, 100), 
+						Utils.getIntProp(props, Utils.PROP_FRAGMENT_NUMBER, 1));
+			}
+		}
 	}
 	
 	/**

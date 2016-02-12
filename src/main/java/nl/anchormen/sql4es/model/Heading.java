@@ -32,6 +32,7 @@ public class Heading {
 	public final static String INDEX = "_index";
 	public final static String TYPE = "_type";
 	public static final String SCORE = "_score";
+	public static final String SEARCH = "_search";
 	
 	private List<Column> columns = new ArrayList<Column>();
 	private HashMap<String, Column> labelIndex = new HashMap<String, Column>();
@@ -114,7 +115,7 @@ public class Heading {
 	
 	public boolean hasLabelStartingWith(String prefix) {
 		for(String label : labelIndex.keySet()){
-			if(label.startsWith(prefix)) return true;
+			if(label.startsWith(prefix) && getColumnByLabel(label).getOp() != Operation.HIGHLIGHT ) return true;
 		}
 		return false;
 	}
@@ -209,6 +210,7 @@ public class Heading {
 					case MAX: name = "MAX\\(\\s*"+name+"\\s*\\)"; break;
 					case MIN: name = "MIN\\(\\s*"+name+"\\s*\\)"; break;
 					case SUM: name = "SUM\\(\\s*"+name+"\\s*\\)"; break;
+					case HIGHLIGHT: name = "HIGHLIGHT\\(\\s*"+name+"\\s*\\)"; break;
 					default: name = c.getColumn();
 				}
 				String alias = findOriginal(originalSql, name, prefix, suffix);

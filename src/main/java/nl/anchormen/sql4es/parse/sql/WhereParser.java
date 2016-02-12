@@ -100,6 +100,7 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(
 						state.getRelations().toArray(new String[state.getRelations().size()])
 					).ids((String)value);
+			else if(field.equals(Heading.SEARCH)) comparison = QueryBuilders.queryStringQuery((String)value);
 			else if(value instanceof String) comparison = queryForString(field, (String)value);
 			else comparison = QueryBuilders.termQuery(field, value);
 		}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN_OR_EQUAL){

@@ -121,20 +121,9 @@ SELECT DISTINCT field, count(1) FROM type, query_cache
 SELECT DISTINCT field, count(1) FROM type
 ```
 
-**Scoring**
+**Text matching, search and scoring**
 
 By default queries are executed as a filter which means elasticsearch does not scores the results and they are returned in an arbitrary order. Add '_score' as one of the selected columns in order to change this behaviour and request scoring. By default results are returned sorted on _score DESC (can be changed to ORDER BY _score ASC). Ordering on another field will disable scoring! In addition it is possible to get the id and type of a document by specifying _id and _type respectively.
-
-``` sql
-/* request scoring, document id and document type */
-SELECT _id, _type, _score FROM mytype where myString = 'hello'
-/* request scoring and all available fields */
-SELECT _score, * FROM mytype WHERE myInt = 42
-/* the following will not request any scoring! */
-SELECT * FROM mytype WHERE myInt = 42
-```
-
-**Search/text matching**
 
 Sql4es does not make a difference between searching and matching on textual fields. Behaviour totally depends on the analysis (if any) performed on the textual field being queried/searched. Under the hood a couple of simple rules are used to determine what type of query should be use:
 
@@ -142,6 +131,21 @@ Sql4es does not make a difference between searching and matching on textual fiel
 - multiple words will be put in a MatchPhraseQuery (example: myString = 'hello there')
 - presence of wildcards (% and \_) will trigger the use of a WildcardQuery (% is replaced with * and _ with ?). Examples: mystring = '%something' is the same as mystring LIKE '%something')
 - the use of IN (…) will be put in a TermsQuery
+
+In addition it is possible to execute a regular search with all features supported by ES. Searching is done by executing a match on the fictional field '_search' (see examples below). It is possible to request highlights for any text field using the highlight function like: SELECT highlight(field), … Fragment size and number can be set through configuration.
+
+``` sql
+/* term query */
+SELECT _score, myString FROM mytype WHERE myString = 'hello' OR myString = 'there'
+/* Same as above */
+SELECT _score, myString FROM mytype WHERE myString IN ('hello', 'there')
+/* phrase query */
+SELECT _score, highlight(mystirng), myString FROM mytype WHERE myString = 'hello there'
+/* wildcard query */
+SELECT _score, myString FROM mytype WHERE myString = 'hel%'
+/* a search for exactly the same as the first two */
+SELECT _score, highlight(mystirng) FROM mytype WHERE _search = 'myString:(hello OR there)'
+```
 
 **Get document by _id**
 
@@ -314,6 +318,8 @@ It is possible to set parameters through the provided url. All parameters are ex
 - default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception) triggered when search results are parsed.
 - query.cache.table (string, default 'query_cache'): the fictional table name used to indicate using elasticsearch query cache. Can be changed to make it shorter or more convenient.
 - result.nested.lateral (boolean, default true): specifies weather nested results must be exploded (the default) or not. Can be set to false when working with the driver from your own code. In this case a column containing a nested object (wrapped in a ResultSet) will have java.sql.Types =  Types.JAVA_OBJECT and can be used as (ResultSet)rs.getObject(colNr).
+- fragment.size (int, default 100): specifies the preferred fragment length in characters.
+- fragment.count (int, default 1): specifies the maximum number of fragments to return when requesting highlighting. 
 
 ### Example using SQLWorkbenchJ
 

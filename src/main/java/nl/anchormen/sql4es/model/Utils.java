@@ -26,7 +26,8 @@ public class Utils {
 	private static final int DEFAULT_ROW_LENGTH = 250; // used during initialization of rows when querying all columns (Select *)
 	private static final String QUERY_CACHE = "query_cache";
 	private static final String RESULT_NESTED_LATERAL = "true";
-	
+	private static final int FRAGMENT_SIZE = 100;
+	private static final int FRAGMENT_NUMBER = 1;
 	
 	// property keys
 	public static final String PROP_FETCH_SIZE = "fetch.size";
@@ -36,6 +37,8 @@ public class Utils {
 	public static final String PROP_QUERY_CACHE_TABLE = "query.cache.table";
 	public static final String PROP_RESULT_NESTED_LATERAL = "result.nested.lateral";
 	public static final String PROP_TABLE_COLUMN_MAP = "table.column.info.map";
+	public static final String PROP_FRAGMENT_SIZE = "fragment.size";
+	public static final String PROP_FRAGMENT_NUMBER = "fragment.number";
 	
 	public static String getLoggingInfo(){
 		StackTraceElement element = Thread.currentThread().getStackTrace()[2];
@@ -56,6 +59,8 @@ public class Utils {
 		defaults.put(PROP_QUERY_CACHE_TABLE, QUERY_CACHE);
 		defaults.put(PROP_QUERY_TIMEOUT_MS, QUERY_TIMEOUT_MS);
 		defaults.put(PROP_RESULT_NESTED_LATERAL, RESULT_NESTED_LATERAL);
+		defaults.put(PROP_FRAGMENT_SIZE, FRAGMENT_SIZE);
+		defaults.put(PROP_FRAGMENT_NUMBER, FRAGMENT_NUMBER);
 		return defaults;
 	}
 	
