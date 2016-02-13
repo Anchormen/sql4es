@@ -237,7 +237,8 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 			req.setSize(determineLimit(limit) );
 		} else if (orderings.isEmpty()){ // scrolling does not work well with sort
 			req.setSize(fetchSize); 
-			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)));
+			req.addSort("_doc", SortOrder.ASC);
+			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
 		}
 		
 		// use query cache when this was indicated in FROM clause
@@ -246,7 +247,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	}
 
 	/**
-	 * Gets SQL column types for the provided tables as a map from colname->java.sql.Types
+	 * Gets SQL column types for the provided tables as a map from colname to java.sql.Types
 	 * @param tables
 	 * @return
 	 */

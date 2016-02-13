@@ -79,7 +79,6 @@ public class ESQueryState{
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildRequest(String sql, QueryBody query, String... indices) throws SQLException {
-		// remove linebreaks from sql to improve parsing robustness
 		if(this.esResponse != null && this.esResponse.getScrollId() != null){
 			client.prepareClearScroll().addScrollId(this.esResponse.getScrollId()).execute();
 		}
@@ -150,11 +149,9 @@ public class ESQueryState{
 	 */
 	private ESResultSet convertResponse(boolean useLateral) throws SQLException{
 		if(esResponse.getHits().getHits().length == 0 && esResponse.getScrollId() != null){
-			// execute the first scrolling request in case it is a scrolling query
 			esResponse = client.prepareSearchScroll(esResponse.getScrollId())
-					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)))
+					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
 					.execute().actionGet();
-			//System.out.println(esResponse);
 		}
 		// parse aggregated result
 		if(esResponse.getAggregations() != null){
@@ -178,13 +175,12 @@ public class ESQueryState{
 		}
 	}
 	
-	
 	public ResultSet moreResutls() throws SQLException {
 		if(result != null && result.getOffset() + result.getNrRows() >= result.getTotal()) return null;
 		if(result != null) result.close();
 		if(esResponse.getScrollId() != null ){
 			esResponse = client.prepareSearchScroll(esResponse.getScrollId())
-					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)))
+					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
 					.execute().actionGet();
 			ESResultSet rs = hitParser.parse(esResponse.getHits(), result.getHeading(), result.getTotal(), Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), 
 					Utils.getBooleanProp(props, Utils.PROP_RESULT_NESTED_LATERAL, true), result.getOffset() + result.getNrRows());
@@ -204,8 +200,9 @@ public class ESQueryState{
 	}
 
 	public void close() throws SQLException {
-		if(this.esResponse != null && this.esResponse.getScrollId() != null)
+		if(this.esResponse != null && this.esResponse.getScrollId() != null){
 			client.prepareClearScroll().addScrollId(this.esResponse.getScrollId()).execute();
+		}
 		if(this.result != null) result.close();
 	}
 

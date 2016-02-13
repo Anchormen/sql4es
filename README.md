@@ -132,7 +132,7 @@ Sql4es does not make a difference between searching and matching on textual fiel
 - presence of wildcards (% and \_) will trigger the use of a WildcardQuery (% is replaced with * and _ with ?). Examples: mystring = '%something' is the same as mystring LIKE '%something')
 - the use of IN (…) will be put in a TermsQuery
 
-In addition it is possible to execute a regular search with all features supported by ES. Searching is done by executing a match on the fictional field '_search' (see examples below). It is possible to request highlights for any text field using the highlight function like: SELECT highlight(field), … Fragment size and number can be set through configuration.
+In addition it is possible to execute a regular search with all features supported by ES. Searching is done by executing a match on the fictional field '_search' (see examples below). It is possible to request highlights for any text field using the highlight function like: SELECT highlight(field), … Fragment size and number can be set through the global configuration.
 
 ``` sql
 /* term query */
@@ -140,7 +140,7 @@ SELECT _score, myString FROM mytype WHERE myString = 'hello' OR myString = 'ther
 /* Same as above */
 SELECT _score, myString FROM mytype WHERE myString IN ('hello', 'there')
 /* phrase query */
-SELECT _score, highlight(mystirng), myString FROM mytype WHERE myString = 'hello there'
+SELECT _score, highlight(myString), myString FROM mytype WHERE myString = 'hello there'
 /* wildcard query */
 SELECT _score, myString FROM mytype WHERE myString = 'hel%'
 /* a search for exactly the same as the first two */
@@ -313,13 +313,13 @@ It is possible to set parameters through the provided url. All parameters are ex
 
 - es.hosts: a comma separated list with additional hosts with optional ports in the format host1(:port1), host2(:port2) … The default port 9300 is taken when no port is specified. 
 - fetch.size (int default 2500): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
-- scroll.timeout.sec (int, default 60): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the scenario at hand.
+- scroll.timeout.sec (int, default 10): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the scenario at hand.
 - query.timeout.ms (int, default 10000): the timeout set on a query. Can be altered depending on the use case.
 - default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception) triggered when search results are parsed.
 - query.cache.table (string, default 'query_cache'): the fictional table name used to indicate using elasticsearch query cache. Can be changed to make it shorter or more convenient.
 - result.nested.lateral (boolean, default true): specifies weather nested results must be exploded (the default) or not. Can be set to false when working with the driver from your own code. In this case a column containing a nested object (wrapped in a ResultSet) will have java.sql.Types =  Types.JAVA_OBJECT and can be used as (ResultSet)rs.getObject(colNr).
 - fragment.size (int, default 100): specifies the preferred fragment length in characters.
-- fragment.count (int, default 1): specifies the maximum number of fragments to return when requesting highlighting. 
+- fragment.count (int, default 1): specifies the maximum number of fragments to return when requesting highlighting.
 
 ### Example using SQLWorkbenchJ
 
