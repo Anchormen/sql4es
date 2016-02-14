@@ -1,7 +1,9 @@
 package nl.anchormen.sql4es.parse.sql;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -23,6 +25,7 @@ import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.Utils;
 
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NotExpression;
@@ -61,12 +64,15 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			return null;
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
-			field = getFieldName(field, state);
+			FieldAndType fat = getFieldAndType(field, state);
+			field = fat.getFieldName();
 			if(field.equals(Heading.ID)){
 				state.addException("Matching document _id using LIKE is not supported");
 				return null;
 			}
 			String query = ((StringLiteral)((LikePredicate)node).getPattern()).getValue();
+			if(fat.getFieldType() == Types.REF) 
+				return QueryBuilders.nestedQuery(field.split("\\.")[0], queryForString(field, query));
 			return queryForString(field, query);
 		}else if (node instanceof InPredicate){
 			return this.processIn((InPredicate)node, state);
@@ -85,7 +91,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	 */
 	private QueryBuilder processComparison(ComparisonExpression compareExp, QueryState state) {
 		String field = getVariableName(compareExp.getLeft());
-		field = getFieldName(field, state);
+		FieldAndType fat = getFieldAndType(field, state);
+		field = fat.getFieldName();
 
 		if(compareExp.getRight() instanceof QualifiedNameReference || compareExp.getRight() instanceof DereferenceExpression){
 			state.addException("Matching two columns is not supported : "+compareExp);
@@ -118,6 +125,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			}
 			comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(field, value));
 		};
+		if(fat.getFieldType() == Types.REF) 
+			return QueryBuilders.nestedQuery(field.split("\\.")[0], comparison);
 		return comparison;
 	}
 
@@ -129,7 +138,9 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	 */
 	private QueryBuilder processIn(InPredicate node, QueryState state) {
 		String field = getVariableName(node.getValue());
-		field = getFieldName(field, state);
+		FieldAndType fat = getFieldAndType(field, state);
+		field = fat.getFieldName();
+		
 		if(!(node.getValueList() instanceof InListExpression)){
 			state.addException("SELECT ... IN can only be used with a list of values");
 			return null;
@@ -145,6 +156,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			String[] ids = new String[values.size()];
 			return QueryBuilders.idsQuery(state.getRelations().toArray(new String[state.getRelations().size()])).addIds(values.toArray(ids));
 		}
+		if(fat.getFieldType() == Types.REF) 
+			return QueryBuilders.nestedQuery(field.split("\\.")[0], QueryBuilders.termsQuery(field, values));
 		return QueryBuilders.termsQuery(field, values);
 	}
 
@@ -191,19 +204,6 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	}
 	
 	/**
-	 * Returns the case sensitive fieldName matching the (potentially lowercased) column
-	 * @param colName
-	 * @param state
-	 * @return
-	 */
-	private String getFieldName(String colName, QueryState state){
-		colName = Heading.findOriginal(state.originalSql(), colName, "where.+", "\\W");
-		Column column = state.getHeading().getColumnByAlias(colName);
-		if(column != null)return column.getColumn();
-		else return colName;
-	}
-	
-	/**
 	 * Interprets the string term and returns an appropriate Query (wildcard, phrase or term)
 	 * @param field
 	 * @param term
@@ -217,4 +217,50 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		}else return QueryBuilders.termQuery(field, term);
 	}
 	
+	/**
+	 * Returns the case sensitive fieldName matching the (potentially lowercased) column
+	 * @param colName
+	 * @param state
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private FieldAndType getFieldAndType(String colName, QueryState state){
+		colName = Heading.findOriginal(state.originalSql(), colName, "where.+", "\\W");
+		Column column = state.getHeading().getColumnByAlias(colName);
+		String properName = colName; 		
+		if(column != null) properName = column.getColumn();
+		String[] parts = properName.split("\\.");
+		for(int i=1; i<parts.length; i++) parts[i] = parts[i-1]+"."+parts[i];
+		
+		// check if the requested column has nested type
+		Map<String, Map<String, Integer>> tableColumnInfo = (Map<String, Map<String, Integer>>)state.getProperty(Utils.PROP_TABLE_COLUMN_MAP);
+		for(String relation : state.getRelations()){
+			for(String parentCol : parts){
+				Integer type = tableColumnInfo.get(relation).get(parentCol);
+				if(type != null) return new FieldAndType(properName, type);
+			}
+		}
+		// in rare instances the type is unknown (added recently?)
+		return new FieldAndType(properName, Types.OTHER);
+	}
+	
+	private class FieldAndType{
+		
+		private String fieldName;
+		private int fieldType;
+		
+		public FieldAndType(String fieldName, int fieldType) {
+			this.fieldName = fieldName;
+			this.fieldType = fieldType;
+		}
+
+		public String getFieldName() {
+			return fieldName;
+		}
+
+		public int getFieldType() {
+			return fieldType;
+		}
+		
+	}
 }

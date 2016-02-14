@@ -268,7 +268,7 @@ public class ESConnection implements Connection{
 
 	@Override
 	public Map<String, Class<?>> getTypeMap() throws SQLException {
-		ResultSet rs = getMetaData().getColumns(null, null, null, null);
+		ResultSet rs = getMetaData().getColumns(null, this.getSchema(), null, null);
 		Map<String, Map<String, Integer>> tableColumnInfo = new HashMap<String, Map<String, Integer>>();;
 		while(rs.next()){
 			String table = rs.getString(3);

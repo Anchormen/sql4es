@@ -57,6 +57,13 @@ public interface QueryState {
 	 * @return
 	 */
 	public String getProperty(String name, String def);
+	
+	/**
+	 * Gets the property with the given name or NULL if it does not exist
+	 * @param name
+	 * @return
+	 */
+	public Object getProperty(String name);
 
 	/**
 	 * Gets set of relations being accessed in the query (if any)

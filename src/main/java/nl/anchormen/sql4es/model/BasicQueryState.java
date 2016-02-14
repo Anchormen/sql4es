@@ -78,4 +78,9 @@ public class BasicQueryState implements QueryState {
 		}
 	}
 
+	@Override
+	public Object getProperty(String name) {
+		return this.props.get(name);
+	}
+
 }

@@ -910,9 +910,10 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					row.set(2, type.value);
 					row.set(3, "_id");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
-					row.set(5, String.class.getName()); 
-					row.set(6, Integer.MAX_VALUE);
+					row.set(5, "string"); 
 					row.set(11, "The document _id used by elasticsearch");
+					row.set(22, "YES");
+					row.set(23, "YES");
 					result.add(row);
 					
 					row = result.getNewRow();				
@@ -921,8 +922,10 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					row.set(2, type.value);
 					row.set(3, "_type");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
-					row.set(5, String.class.getName()); 
-					row.set(6, Integer.MAX_VALUE);
+					row.set(5, "string");
+					row.set(11, "The type a record is part of");
+					row.set(22, "NO");
+					row.set(23, "YES");
 					result.add(row);
 					
 					row = result.getNewRow();				
@@ -931,8 +934,10 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					row.set(2, type.value);
 					row.set(3, "_index");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
-					row.set(5, String.class.getName()); 
-					row.set(6, Integer.MAX_VALUE);
+					row.set(5, "string"); 
+					row.set(11, "The index a record is part of");
+					row.set(22, "NO");
+					row.set(23, "YES");
 					result.add(row);
 					
 					MappingMetaData typeMd = indices.get(index.value).getMappings().get(type.value);
@@ -951,26 +956,33 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	@SuppressWarnings("unchecked")
 	private int addColumnInfo(Map<String, Object> info, String parent, int nextIndex, String esType, ESResultSet result, 
 			String columnNamePattern, boolean lateral){
-		// add static _id, _type, _index fields accessible through the driver
 		List<Object> row = result.getNewRow();				
 		for(String key : info.keySet()){
 			String colName = parent != null ? parent+"."+key : key;
 			//if(columnNamePattern != null && !Pattern.matches(columnNamePattern, colName)) continue;
 			Map<String, Object> properties = (Map<String, Object>)info.get(key);
-			if(properties.containsKey("properties") && lateral){
-				nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esType, result, columnNamePattern, lateral);
-			}else if(properties.containsKey("properties")){
+			//if(properties.containsKey("properties") && lateral){
+			//	System.out.println(key+"\t"+properties);
+			//	nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esType, result, columnNamePattern, lateral);
+			//}else 
+				if(properties.containsKey("properties")){
 				row = result.getNewRow();				
 				row.set(0, null);
 				row.set(1, "No SQL Table schema available");
 				row.set(2, esType);
 				row.set(3, colName);
-				row.set(4, Types.JAVA_OBJECT); 
-				row.set(5, Object.class.getName()); 
+				if("nested".equals( properties.get("type")) ){
+					row.set(4, Types.REF); 
+					row.set(5, properties.get("type"));					
+				}else{
+					row.set(4, Types.JAVA_OBJECT); 
+					row.set(5, Object.class.getName()); 
+				}
 				row.set(6, 1);
 				row.set(11, properties.toString());
 				nextIndex++;
 				result.add(row);
+				nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esType, result, columnNamePattern, lateral);
 			}else {
 				row = result.getNewRow();				
 				String type = (String)properties.get("type");
@@ -980,51 +992,40 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				row.set(3, colName);
 				row.set(6, 1);
 				row.set(11, properties.toString());
+				row.set(5, type); 
 				switch (type){
 					case "string" :
 						row.set(4, Heading.getTypeIdForObject(new String())); 
-						row.set(5, String.class.getName()); 
-						row.set(6, Integer.MAX_VALUE);
 						break;
 					case "long" :
 						row.set(4, Heading.getTypeIdForObject(new Long(1))); 
-						row.set(5, Long.class.getName()); 
 						break;
 					case "integer" :
 						row.set(4, Heading.getTypeIdForObject(new Integer(1))); 
-						row.set(5, Integer.class.getName()); 
 						break;
 					case "double" :
 						row.set(4, Heading.getTypeIdForObject(new Double(1))); 
-						row.set(5, Double.class.getName()); 
 						break;
 					case "float" :
 						row.set(4, Heading.getTypeIdForObject(new Float(1))); 
-						row.set(5, Float.class.getName()); 
 						break;
 					case "date" :
 						row.set(4, Heading.getTypeIdForObject(new Date())); 
-						row.set(5, Date.class.getName()); 
 						break;
 					case "short" :
 						row.set(4, Heading.getTypeIdForObject(new Short((short)1))); 
-						row.set(5, Short.class.getName()); 
 						break;
 					case "byte" :
 						row.set(4, Heading.getTypeIdForObject(new Byte((byte)1))); 
-						row.set(5, Byte.class.getName()); 
 						break;
 					case "boolean" :
-						row.set(4, Heading.getTypeIdForObject(new Boolean(true))); 
-						row.set(5, Boolean.class.getName()); 
+						row.set(4, Types.BOOLEAN); 
 						break;
 					case "nested" :
-						row.set(4, Types.JAVA_OBJECT); 
-						row.set(5, Object.class.getName()); 
+						row.set(4, Types.REF); 
 						break;
 					case "object" :
 						row.set(4, Types.JAVA_OBJECT); 
-						row.set(5, Object.class.getName()); 
 						break;
 					default :
 						row.set(4, Types.OTHER); 

@@ -1,0 +1,26 @@
+{
+	"properties": {
+		"intNum" : {
+			"type" : "integer"
+		},
+		"text": {
+			"type":"string",
+			"index":"not_analyzed"
+		},
+		"nestedDoc" : {
+			"type" : "nested",
+			"properties" : {
+				"intNum" : {
+					"type" : "integer"
+				},
+				"text": {
+					"type":"string",
+					"index":"not_analyzed"
+				},
+				"nestedDoc" : {
+					"type" : "nested"
+				}
+			}
+		}
+	}
+}

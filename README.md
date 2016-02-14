@@ -63,9 +63,11 @@ Some SQL statements or Elasticsearch features that are ***not (yet) supported***
 - UPDATE is not supported, although it is possible to update documents by inserting values for an existing _id
 - Not possible to INSERT nestested objects
 - Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
-- Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.
+- ~~Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.~~ 
+  - added in 0.6.2.1: Nested types are detected by the driver and queries on those fields are executed accordingly
 - Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
-- Elasticsearch features like suggestions, templates and some im forgetting or unfamiliar with are not supported.
+- Elasticsearch features like ~~full text search, highlighting,~~ suggestions and  templates are not supported.
+  - added in 0.6.2.1: full text search can be done using *_search = '…'* and highlighting trough *SELECT highlight(some-field) FROM …* 
 
 ### Concepts
 

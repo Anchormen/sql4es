@@ -492,6 +492,8 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		refresh();
 		Utils.sleep(1000);
 		
+		st.execute("USE "+index);
+		
 		ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE _id = 'no-valid-id'");
 		int count = 0;
 		while(rs.next()) count++;

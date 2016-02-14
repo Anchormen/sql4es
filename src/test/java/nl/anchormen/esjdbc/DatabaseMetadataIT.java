@@ -102,6 +102,6 @@ public class DatabaseMetadataIT extends Sql4EsBase {
 		while(rs.next()){
 			count++;
 		}
-		assertEquals(36, count);
+		assertEquals(38, count);
 	}
 }
