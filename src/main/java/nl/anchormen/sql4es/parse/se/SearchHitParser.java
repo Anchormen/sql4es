@@ -42,7 +42,6 @@ public class SearchHitParser {
 	 */
 	public ESResultSet parse(SearchHits hits, Heading head, long total, int rowLength, boolean useLateral, long offset) throws SQLException{
 		Map<String, Heading> headMap = buildHeaders(head);
-		//if(!useLateral) head = headMap.get("");
 
 		ESResultSet rs = new ESResultSet(head, (int)total, rowLength);
 		rs.setOffset((int)offset);
@@ -52,7 +51,7 @@ public class SearchHitParser {
 		
 		if(useLateral){
 			for(Column col : rs.getHeading().columns())
-				if(!col.getColumn().contains(".") && rs.getHeading().hasLabelStartingWith(col.getColumn()+".")) col.setVisible(false);
+				if(rs.getHeading().hasLabelStartingWith(col.getColumn()+".")) col.setVisible(false);
 		}else{
 			for(Column col : rs.getHeading().columns())
 				if(col.getColumn().contains(".") ) col.setVisible(false);

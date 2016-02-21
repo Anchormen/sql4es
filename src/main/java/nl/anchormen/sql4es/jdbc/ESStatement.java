@@ -82,11 +82,16 @@ public class ESStatement implements Statement {
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
-		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
+		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ").trim();
+		// custom stuff to support UPDATE statements since Presto does not parse it
+		if(sql.toLowerCase().startsWith("update")){
+			return updateState.execute(sql);
+		}
+		
 		com.facebook.presto.sql.tree.Statement statement = parser.createStatement(sql);
 		if(statement instanceof Query) throw new SQLException("A regular query cannot be executed as an Update");
 		if(statement instanceof Insert){
-			if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
+			//if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
 			return updateState.execute(sql, (Insert)statement, connection.getSchema());
 		}else if(statement instanceof Delete){
 			if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");

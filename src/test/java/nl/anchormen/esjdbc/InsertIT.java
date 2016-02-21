@@ -122,6 +122,29 @@ public class InsertIT extends Sql4EsBase {
 		st.close();
 		st2.close();
 	}
+	
+	@Test
+	public void insertNested() throws SQLException{
+		
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		int res = st.executeUpdate("INSERT INTO "+index+".nested (myString, \"doc.myString\", \"doc.myInt\") VALUES ('hello!','hi there', 1), ('Hi!','good bye', 2)");
+		assertEquals(2, res);
+		flush();
+		refresh();
+		Utils.sleep(1000);
+		
+		Statement  st2 = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		ResultSet rs = st2.executeQuery("Select * from nested");
+		ResultSetMetaData rsm = rs.getMetaData();
+		assertEquals(6, rsm.getColumnCount());
+		int count = 0;
+		while(rs.next()){
+			count++;
+		}
+		assertEquals(2, count);
+		st.close();
+		st2.close();
+	}
 /*
 	@Test
 	public void insertFromSelect() throws Exception{

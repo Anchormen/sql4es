@@ -9,7 +9,7 @@ Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implem
 The sql4es driver can be used by adding the jar file, found within the releases directory of the project, to the tool/application used and load the driver with name '***nl.anchormen.sql4es.jdbc.ESDriver***'. The driver expects an URL with the following format: ***jdbc:sql4es://host:port/index?params***. 
 
 - host: the hostname or ip of one of the es hosts (required)
-- port: an optional the portnumber to use for the transport client (default is 9300)
+- port: an optional the port number to use for the transport client (default is 9300)
 - index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (also see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index.
 - params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuration section of this readme for a description of all parameters.
 
@@ -50,6 +50,7 @@ Simply said the sql4es driver translates SQL statements to their Elasticsearch c
 - CREATE VIEW (AS): creates an alias, optionally with a filter
 - DROP TABLE/VIEW removes an index or alias
 - INSERT INTO (VALUES | SELECT): inserts documents into an index/type; either provided values or results of a query. Possible to UPDATE documents using INSERT by specifying existing document _id's
+- UPDATE: executed as an elasticsearch Upsert
 - DELETE FROM (WHERE): removes documents
 - USE: selects an index as the driver's active one (used to interpret queries)
 - EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
@@ -60,14 +61,16 @@ Elasticsearch does not support transactions. Hence executing batches cannot be r
 
 Some SQL statements or Elasticsearch features that are ***not (yet) supported***:
 
-- UPDATE is not supported, although it is possible to update documents by inserting values for an existing _id
-- Not possible to INSERT nestested objects
+- ~~UPDATE is not supported, although it is possible to update documents by inserting values for an existing _id~~
+  - added in 0.7.2.1: it is now possible to executes updates like UPDATE index.type SET myInt=100 WHERE myString = 'hundred'
+- ~~Not possible to INSERT nestested objects~~
+  - added in 0.7.2.1 using double quotes: INSERT INTO mytype ("myObject.nestedDoc.myInt") VALUES (1)
 - Not possible to specify offsets (OFFSET offset or LIMIT offset, number)
 - ~~Fields with type 'nested' are not supported because this type requires different methods to query and retrieve data.~~ 
   - added in 0.6.2.1: Nested types are detected by the driver and queries on those fields are executed accordingly
 - Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
 - Elasticsearch features like ~~full text search, highlighting,~~ suggestions and  templates are not supported.
-  - added in 0.6.2.1: full text search can be done using *_search = '…'* and highlighting trough *SELECT highlight(some-field) FROM …* 
+  - added in 0.6.2.1: full text search can be done using *_search = '…'* and highlighting trough *SELECT highlight(some-field) FROM …*
 
 ### Concepts
 
@@ -286,8 +289,8 @@ Adds all of the results from the SELECT statement to the specified type within t
 /* Insert two documents into the mytype mapping */
 INSERT INTO mytype (myInt, myDouble, myString) VALUES (1, 1.0, 'hi there'), (2, 2.0, 'hello!')
 
-/* insert a single document */
-INSERT INTO mytype (myInt, myDouble, myString) VALUES (3, 3.0, 'bye, bye')
+/* insert a single document, using quotes around nested object fields */
+INSERT INTO mytype (myInt, myDouble, "nestedObject.myString") VALUES (3, 3.0, 'bye, bye')
 
 /* update or insert a document with specified _id */
 INSERT INTO mytype (_id, myInt, myDouble) VALUES ('some_document_id', 4, 4.0)
@@ -308,6 +311,14 @@ DELETE FROM mytype WHERE myInt == 3
 /*delete all documents from mytype*/
 DELETE FROM mytype 
 ```
+
+### UPDATE
+
+It is possible to update documents within an index/type using standard SQL syntax. Note that nested object names must be surrounded by double quotes:
+
+***UPDATE index.type SET field1=value, fiedl2='value', "doc.field"=value WHERE condition***
+
+The update is executed in two steps. First the _id's of all documents matching the condition are fetched after which the specified fields for these documents are updated in batch using the Upsert API. 
 
 ### Configuration
 

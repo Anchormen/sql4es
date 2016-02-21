@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>nl.am</groupId>
   <artifactId>sql4es</artifactId>
-  <version>0.6.2.1</version>
+  <version>0.7.2.1</version>
   <packaging>jar</packaging>
   <name>sql-4-elasticsearch</name>
   <!-- <url>http://maven.apache.org</url> -->

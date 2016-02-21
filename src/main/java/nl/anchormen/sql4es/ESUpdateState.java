@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
@@ -32,17 +34,22 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 import com.carrotsearch.hppc.cursors.ObjectCursor;
 import com.facebook.presto.sql.parser.SqlParser;
+import com.facebook.presto.sql.tree.BooleanLiteral;
+import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CreateTable;
 import com.facebook.presto.sql.tree.CreateTableAsSelect;
 import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.Delete;
+import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.DropTable;
 import com.facebook.presto.sql.tree.DropView;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Insert;
+import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
+import com.facebook.presto.sql.tree.StringLiteral;
 import com.facebook.presto.sql.tree.TableElement;
 import com.facebook.presto.sql.tree.Values;
 
@@ -68,6 +75,7 @@ public class ESUpdateState {
 	private List<String> bulkList = new ArrayList<String>();
 	private ESQueryState queryState;
 	private Statement statement;
+	private Pattern updateRegex = Pattern.compile("UPDATE\\s+(\\w+)\\.?(\\w+)?\\s+SET\\s+(.+)\\s+WHERE\\s+(.+)", Pattern.CASE_INSENSITIVE);
 	
 	public ESUpdateState(Client client, Statement statement) throws SQLException{
 		this.client = client;
@@ -211,6 +219,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
+	@SuppressWarnings("unchecked")
 	private int insertFromValues(String sql, Insert insert, String index, int maxRequestsPerBulk) throws SQLException {
 		Heading heading = new Heading();
 		QueryState state = new BasicQueryState(sql, heading, this.props);
@@ -223,36 +232,56 @@ public class ESUpdateState {
 		String type = indexAndType[1];
 		
 		if(values.size() % heading.getColumnCount() != 0) throw new SQLException("Number of columns does not match number of values for one of the inserts");
-		HashMap<String, Object> fieldValues = new HashMap<String, Object>(heading.getColumnCount());
-		String id = null;
+		
 		List<IndexRequestBuilder> indexReqs = new ArrayList<IndexRequestBuilder>();
 		int indexCount = 0;
-		for(int i=0; i<values.size(); i++){
-			Object value = values.get(i);
-			Column col = heading.getColumn(i%heading.getColumnCount());
-			if(col.getColumn().equals("_id")){
-				id = value.toString();
-			}else{
-				fieldValues.put(col.getColumn(), value);
+		int valueIdx = 0;
+		while(valueIdx < values.size()){
+			HashMap<String, Object> fieldValues = new HashMap<String, Object>();
+			String id = null;
+			for(Column col : heading.columns()){
+				Object value = values.get(valueIdx);
+				valueIdx++;
+				
+				if(col.getColumn().equals("_id")){
+					id = value.toString();
+					continue;
+				}
+				
+				if(col.getColumn().indexOf('.') == -1) {
+					fieldValues.put(col.getColumn(), value);
+					continue;
+				}
+					
+				// create nested object
+				Map<String, Object> map = fieldValues; 
+				String[] objectDef = col.getColumn().split("\\.");
+				for(int k=0; k<objectDef.length; k++){
+					String key = objectDef[k];
+					if(k == objectDef.length-1) map.put(key, value);
+					else{
+						if(!map.containsKey(key)) map.put(key, new HashMap<String, Object>());
+							map = (Map<String, Object>)map.get(key);
+					}
+				}
 			}
 			
-			if(fieldValues.size() == (id == null ? heading.getColumnCount() : heading.getColumnCount() -1)){
-				IndexRequestBuilder indexReq = client.prepareIndex().setIndex(index).setType(type);
-				if(id != null) indexReq.setId(id);
-				indexReq.setSource(fieldValues);
-				indexReqs.add(indexReq);
-				id = null;
-				fieldValues = new HashMap<String, Object>(heading.getColumnCount());
-				if(indexReqs.size() >= maxRequestsPerBulk){
-					indexCount += this.execute(indexReqs, maxRequestsPerBulk);
-					indexReqs.clear();
-				}
+			// create index request
+			IndexRequestBuilder indexReq = client.prepareIndex().setIndex(index).setType(type);
+			if(id != null) indexReq.setId(id);
+			indexReq.setSource(fieldValues);
+			indexReqs.add(indexReq);
+			if(indexReqs.size() >= maxRequestsPerBulk){
+				indexCount += this.execute(indexReqs, maxRequestsPerBulk);
+				indexReqs.clear();
 			}
 		}
 		if(indexReqs.size() > 0)  indexCount += this.execute(indexReqs, maxRequestsPerBulk);
 		return indexCount;
 	}
+		
 
+	
 	/**
 	 * Converts a ResultSet into a (nested) Map to be used as a source within an Index operation.
 	 * @param rs
@@ -585,6 +614,90 @@ public class ESUpdateState {
 		IndicesAliasesResponse response = client.admin().indices().prepareAliases().removeAlias(indices.toArray(new String[indices.size()]), alias).get();
 		if(!response.isAcknowledged()) throw new SQLException("Elasticsearch failed to delete the specified alias");
 		return 0;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public int execute(String update) throws SQLException {
+		Matcher matcher = updateRegex.matcher(update);
+		if(!matcher.find()) throw new SQLException("Unable to parse UPDATE statement");
+		
+		// get index and type to update
+		String index = statement.getConnection().getSchema();
+		String type = matcher.group(1);
+		if(matcher.group(2) != null){
+			index = type;
+			type = matcher.group(2);
+		}
+		
+		// get fields and values to update
+		try{
+			Map<String, Object> fieldValues = new HashMap<String, Object>();
+			SqlParser parser = new SqlParser();
+			String[] parts = matcher.group(3).replaceAll(",\\s*([\"|\\w|\\.]+\\s*=)", "<-SPLIT->$1").split("<-SPLIT->");
+			for(String p : parts){
+				ComparisonExpression comparison = (ComparisonExpression) parser.createExpression(p);
+				String field = comparison.getLeft().toString().replaceAll("\"", "");
+				field = Heading.findOriginal(matcher.group(3), field, "", "\\s*=");
+				Object value = getLiteralValue(comparison.getRight());
+				
+				if(field.indexOf('.') == -1) {
+					fieldValues.put(field, value);
+					continue;
+				}
+					
+				// create nested object
+				Map<String, Object> map = fieldValues; 
+				String[] objectDef = field.split("\\.");
+				for(int k=0; k<objectDef.length; k++){
+					String key = objectDef[k];
+					if(k == objectDef.length-1) map.put(key, value);
+					else{
+						if(!map.containsKey(key)) map.put(key, new HashMap<String, Object>());
+							map = (Map<String, Object>)map.get(key);
+					}
+				}
+				
+			}
+			
+			// get ID's for documents to be updated
+		
+			String select = "SELECT _id FROM "+type+" WHERE "+matcher.group(4);
+			Query query = (Query)new SqlParser().createStatement(select);
+			this.queryState.buildRequest(select, query.getQueryBody(), index);
+			ResultSet rs = this.queryState.execute();
+			
+			// execute updates in batch mode based on id's returned
+			int maxRequestsPerBulk = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 2500);
+			List<UpdateRequestBuilder> indexReqs = new ArrayList<UpdateRequestBuilder>();
+			int updateCount = 0;
+			while(rs != null){
+				while(rs.next()){
+					String id = rs.getString(1);
+					indexReqs.add(
+						client.prepareUpdate(index, type, id).setDoc(fieldValues)
+					);
+					if(indexReqs.size() >= maxRequestsPerBulk){
+						updateCount += this.execute(indexReqs, maxRequestsPerBulk);
+						indexReqs.clear();
+					}
+				}
+				rs.close();
+				rs = queryState.moreResutls();
+			}
+			if(indexReqs.size() > 0)  updateCount += this.execute(indexReqs, maxRequestsPerBulk);
+			return updateCount;
+		}catch(Exception e){
+			throw new SQLException("Unable to execute UPDATE due to "+e.getMessage(),e);
+		}
+		
+	}
+	
+	private Object getLiteralValue(Expression expression) throws SQLException{
+		if(expression instanceof LongLiteral) return ((LongLiteral)expression).getValue();
+		else if(expression instanceof BooleanLiteral) return ((BooleanLiteral)expression).getValue();
+		else if(expression instanceof DoubleLiteral) return ((DoubleLiteral)expression).getValue();
+		else if(expression instanceof StringLiteral) return ((StringLiteral)expression).getValue();
+		throw new SQLException("Unsupported literal type: "+expression);
 	}
 	
 	public void close() throws SQLException{
