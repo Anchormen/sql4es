@@ -56,6 +56,7 @@ import com.facebook.presto.sql.tree.Values;
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.TableRelation;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.parse.sql.RelationParser;
 import nl.anchormen.sql4es.parse.sql.SelectParser;
@@ -324,7 +325,7 @@ public class ESUpdateState {
 		for(int i=1; i<=rsm.getColumnCount(); i++){
 			String column = rsm.getColumnLabel(i);
 			if(!column.equals("_id") && !column.equals("_index") && !column.equals("_type")){ 
-				heading.add(new Column(column, heading.getColumnCount()));
+				heading.add(new Column(column));
 			}
 		}
 		return heading;
@@ -548,15 +549,17 @@ public class ESUpdateState {
 		if(!querySpec.getFrom().isPresent()) throw new SQLException("Add atleast one INDEX to the query to create the view from");
 		
 		QueryState state = new BasicQueryState(sql, new Heading(), props);
-		List<String> indices = new RelationParser().process(querySpec.getFrom().get(), null);
+		List<TableRelation> relations = new RelationParser().process(querySpec.getFrom().get(), null);
+		String[] indices = new String[relations.size()];
+		for(int i=0; i<relations.size(); i++) indices[i] = relations.get(i).getTable();
 		new SelectParser().process(querySpec.getSelect(), state);
 		
 		IndicesAliasesResponse response;
 		if(querySpec.getWhere().isPresent()){
 			QueryBuilder query = new WhereParser().process(querySpec.getWhere().get(), state);
-			response = client.admin().indices().prepareAliases().addAlias(indices.toArray(new String[indices.size()]), alias, query).execute().actionGet();
+			response = client.admin().indices().prepareAliases().addAlias(indices, alias, query).execute().actionGet();
 		}else{
-			response = client.admin().indices().prepareAliases().addAlias(indices.toArray(new String[indices.size()]), alias).execute().actionGet();
+			response = client.admin().indices().prepareAliases().addAlias(indices, alias).execute().actionGet();
 		}
 		if(!response.isAcknowledged()) throw new SQLException("Elasticsearch failed to create the specified alias");
 		this.statement.getConnection().getTypeMap(); // trigger a reload of the table&column set for the connection

@@ -217,6 +217,10 @@ public class ESQueryState{
 		return maxRows;
 	}
 	
+	public ESQueryState copy() throws SQLException{
+		return new ESQueryState(client, statement);
+	}
+	
 	public int getLimit(){
 		if(limit <= -1 ) return this.getMaxRows();
 		if(getMaxRows() <= -1) return limit;

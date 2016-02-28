@@ -35,10 +35,10 @@ public class Heading {
 	public static final String SEARCH = "_search";
 	
 	private List<Column> columns = new ArrayList<Column>();
-	private HashMap<String, Column> labelIndex = new HashMap<String, Column>();
+	private HashMap<String, Column> fieldIndex = new HashMap<String, Column>();
 	private HashMap<String, Column> aliasIndex = new HashMap<String, Column>();
 	private HashMap<String, Integer> labelToColNr = new HashMap<String, Integer>();
-	private HashMap<Integer, Integer> columnToTrueIndex = new HashMap<Integer, Integer>();
+	private HashMap<Integer, Integer> columnToColIndex = new HashMap<Integer, Integer>();
 	private Map<String, Integer> typeIndex = new HashMap<String, Integer>();
 	private boolean allColumns = false;
 	private boolean indexed = false;
@@ -52,19 +52,27 @@ public class Heading {
 	public void add(Column column) {
 		if(column.getColumn().equals("*") && column.getOp() == Operation.NONE) {
 			this.allColumns  = true;
-			this.add(new Column(ID, getColumnCount()).setSqlType(Types.VARCHAR));
-			this.add(new Column(INDEX, getColumnCount()).setSqlType(Types.VARCHAR));
-			this.add(new Column(TYPE, getColumnCount()).setSqlType(Types.VARCHAR));
+			String table = column.getTable();
+			String tableAlias = column.getTableAlias();
+			this.add(new Column(ID).setSqlType(Types.VARCHAR).setIndex(getColumnCount()).setTable(table, tableAlias));
+			this.add(new Column(INDEX).setSqlType(Types.VARCHAR).setIndex(getColumnCount()).setTable(table, tableAlias));
+			this.add(new Column(TYPE).setSqlType(Types.VARCHAR).setIndex(getColumnCount()).setTable(table, tableAlias));
+			
+			for(String field : this.typeIndex.keySet()){
+				if(field.equals(ID) || field.equals(TYPE) || field.equals(INDEX)) continue;
+				this.add(new Column(field).setSqlType(typeIndex.get(field)).setTable(table, tableAlias));
+			}
 		} else {
+			column.setIndex(this.getColumnCount());
 			columns.add(column);
-			labelIndex.put(column.getFullName(), column);
+			fieldIndex.put(column.getColumn(), column);
 			if(column.getAlias() != null) aliasIndex.put(column.getAlias(), column);
 		}
 		// set type
 		if(column.getColumn().equals(SCORE)) column.setSqlType(Types.DOUBLE);
 		if(column.getOp() == Operation.COUNT) column.setSqlType(Types.BIGINT);
 		else if(column.getOp() == Operation.AVG || column.hasCalculation()) column.setSqlType(Types.FLOAT);
-		else if(typeIndex.containsKey(column.getColumn())){
+		else if(column.getSqlType() != Types.ARRAY && typeIndex.containsKey(column.getColumn())){
 			column.setSqlType(typeIndex.get(column.getColumn()));
 		}
 	}
@@ -99,7 +107,7 @@ public class Heading {
 	}
 	
 	public Column getColumnByLabel(String label){
-		return labelIndex.get(label);
+		return fieldIndex.get(label);
 	}
 	
 	public Column getColumnByNameAndOp(String colName, Operation op){
@@ -110,19 +118,19 @@ public class Heading {
 	}
 	
 	public boolean hasLabel(String label){
-		return labelIndex.containsKey(label);
+		return fieldIndex.containsKey(label);
 	}
 	
 	public boolean hasLabelStartingWith(String prefix) {
-		for(String label : labelIndex.keySet()){
+		for(String label : fieldIndex.keySet()){
 			if(label.startsWith(prefix) && getColumnByLabel(label).getOp() != Operation.HIGHLIGHT ) return true;
 		}
 		return false;
 	}
 
 	public Column getFirstColumnStartingWith(String prefix) {
-		for(String label : labelIndex.keySet()){
-			if(label.startsWith(prefix)) return labelIndex.get(label);
+		for(String label : fieldIndex.keySet()){
+			if(label.startsWith(prefix)) return fieldIndex.get(label);
 		}
 		return null;
 	}
@@ -163,19 +171,19 @@ public class Heading {
 	 * from column name, alias, and jdbc column number (starting at 1) to right array-index 
 	 */
 	public void buildIndex(){
-		labelIndex.clear();
+		fieldIndex.clear();
 		labelToColNr.clear();
 		aliasIndex.clear();
-		columnToTrueIndex.clear();
+		columnToColIndex.clear();
 		int visIndex = 1;
 		for(Column col : columns) {
-			labelIndex.put(col.getLabel(), col);
-			labelIndex.put(col.getFullName(), col);
+			fieldIndex.put(col.getLabel(), col);
+			fieldIndex.put(col.getAggName(), col);
 			labelToColNr.put(col.getLabel(), visIndex);
 			labelToColNr.put(col.getFullName(), visIndex);
 			if(col.getAlias() != null) aliasIndex.put(col.getAlias(), col);
 			if(col.isVisible()){
-				columnToTrueIndex.put(visIndex, col.getIndex());
+				columnToColIndex.put(visIndex, col.getIndex());
 				visIndex++;
 			}
 		}
@@ -246,11 +254,11 @@ public class Heading {
 	 * @return
 	 */
 	public Integer getIndexForColumn(int nr) throws SQLException{
-		if(!indexed || columnToTrueIndex.size() == 0){
+		if(!indexed || columnToColIndex.size() == 0){
 			buildIndex();
 			indexed = true;
 		}
-		Integer idx = columnToTrueIndex.get(nr);
+		Integer idx = columnToColIndex.get(nr);
 		if(idx == null) throw new SQLException("Column "+nr+" does not exist");
 		return idx;
 	}

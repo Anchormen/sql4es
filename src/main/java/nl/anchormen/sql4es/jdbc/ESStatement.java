@@ -70,7 +70,7 @@ public class ESStatement implements Statement {
 			String ex = queryState.explain(sql, (Explain)statement, connection.getSchema());
 			if(this.result != null) this.result.close();
 			Heading heading = new Heading();
-			heading.add(new Column("Explanation",0));
+			heading.add(new Column("Explanation"));
 			ESResultSet rs = new ESResultSet(heading, 1, 1);
 			List<Object> row = rs.getNewRow();
 			row.set(0, ex);

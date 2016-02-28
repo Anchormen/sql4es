@@ -78,8 +78,8 @@ public class ESArray implements Array {
 
 	private ResultSet getResultSet(List<Object> list, Map<String, Class<?>> map) throws SQLException{
 		Heading heading = new Heading();
-		heading.add(new Column("index", 0).setSqlType(Types.INTEGER));
-		heading.add(new Column("value", 1).setSqlType(this.getBaseType()));
+		heading.add(new Column("index").setSqlType(Types.INTEGER));
+		heading.add(new Column("value").setSqlType(this.getBaseType()));
 		ESResultSet rs = new ESResultSet(heading, list.size(), 2);
 		for(int i=0; i<list.size(); i++){
 			List<Object> row = rs.getNewRow();

@@ -82,7 +82,7 @@ public class SearchHitParser {
 				if(parentAndKey[1] == null) {
 					headingIndex.put(parentAndKey[0], new Heading().setAllColls(true));
 				}else if(!subH.hasLabel(parentAndKey[1]) && !subH.hasAllCols()){
-					subH.add(new Column(parentAndKey[1], subH.getColumnCount()));
+					subH.add(new Column(parentAndKey[1]));
 				}
 			}
 		}
@@ -139,8 +139,7 @@ public class SearchHitParser {
 							s.setSqlType(Types.ARRAY);
 							row.set(s.getIndex(), new ESArray(list));
 						}else if(head.hasAllCols()){
-							Column newCol = new Column(key, head.getColumnCount());
-							newCol.setSqlType(Types.ARRAY);
+							Column newCol = new Column(key).setSqlType(Types.ARRAY);
 							head.add(newCol);
 							row.set(newCol.getIndex(), new ESArray(list));
 						}
@@ -148,7 +147,7 @@ public class SearchHitParser {
 				}else{
 					// add column if it does not exist yet and set value to null
 					if(head.hasAllCols() && !head.hasLabel(key)){
-						head.add(new Column(key, head.getColumnCount()));
+						head.add(new Column(key));
 					}
 				}
 			}else{
@@ -203,11 +202,9 @@ public class SearchHitParser {
 						
 						Column destinationCol = head.getColumnByLabel(nestedColName);
 						if(destinationCol == null){
-							destinationCol = new Column(nestedColName, head.getColumnCount()).setAlias(nestedCol.getAlias())
-									.setVisible(nestedCol.isVisible()).setSqlType(nestedCol.getSqlType());
+							destinationCol = new Column(nestedColName).setAlias(nestedCol.getAlias())
+									.setSqlType(nestedCol.getSqlType()).setVisible(nestedCol.isVisible());
 							head.add(destinationCol);
-							if(nestedCol.getSqlType() == Types.ARRAY) destinationCol.setSqlType(Types.ARRAY);
-							else if(nestedCol.getSqlType() == Types.JAVA_OBJECT) destinationCol.setSqlType(Types.JAVA_OBJECT);
 						}
 						Object value = nestedRow.get(nestedCol.getIndex());
 						destinationRow.set(destinationCol.getIndex(), value);
@@ -262,9 +259,8 @@ public class SearchHitParser {
 			Column col = heading.getColumnByLabel(key);
 			row.set(col.getIndex(), value);
 		}else if(heading.hasAllCols()){
-			Column newCol = new Column(key, heading.getColumnCount());
 			int type = Heading.getTypeIdForObject(value);
-			newCol.setSqlType(type);
+			Column newCol = new Column(key).setSqlType(type);
 			heading.add(newCol);
 			row.set(newCol.getIndex(), value);
 		}
@@ -292,10 +288,9 @@ public class SearchHitParser {
 		}
 		Column col = heading.getColumnByLabel(key);
 		if(col == null){
-			col = new Column(key, heading.getColumnCount());
+			col = new Column(key).setSqlType(Types.JAVA_OBJECT);
 			heading.add(col);
 		}
-		col.setSqlType(Types.JAVA_OBJECT);
 		row.set(col.getIndex(), nestedRs);
 	}
 }

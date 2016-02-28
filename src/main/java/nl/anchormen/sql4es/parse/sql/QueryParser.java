@@ -30,6 +30,7 @@ import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
+import nl.anchormen.sql4es.model.TableRelation;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.expression.IComparison;
 
@@ -66,7 +67,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 */
 	public Object[] parse(String sql, QueryBody queryBody, int maxRows, SearchRequestBuilder searchReq, 
 			Properties props, Map<String, Map<String, Integer>> tableColumnInfo) throws SQLException{
-		this.sql = sql.replace("\r", " ").replace("\n", " ");;
+		this.sql = sql.replace("\r", " ").replace("\n", " ");// TODO: this removes linefeeds from string literals as well!
 		this.props = props;
 		this.maxRows = maxRows;
 		this.tableColumnInfo = tableColumnInfo;
@@ -86,7 +87,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		this.heading = new Heading();
 		BasicQueryState state = new BasicQueryState(sql, heading, props);
 		int limit = -1;
-		List<String> relations = new ArrayList<String>();
+		List<TableRelation> relations = new ArrayList<TableRelation>();
 		AggregationBuilder aggregation = null;
 		QueryBuilder query = null;
 		IComparison having = null;
@@ -114,7 +115,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 				return new Object[]{state};
 			}
 			for(int i=0; i<relations.size(); i++){
-				if(relations.get(i).toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
+				if(relations.get(i).getTable().toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
 					useCache = true;
 					relations.remove(i);
 					i--;
@@ -206,11 +207,12 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param useCache
 	 */
 	@SuppressWarnings("rawtypes")
-	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<String> relations,
+	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<TableRelation> relations,
 			QueryBuilder query, AggregationBuilder aggregation, IComparison having, List<OrderBy> orderings,
 			int limit, boolean useCache, boolean requestScore) {
 		String[] types = new String[relations.size()];
-		SearchRequestBuilder req = searchReq.setTypes(relations.toArray(types));
+		for(int i=0; i<relations.size(); i++) types[i] = relations.get(i).getTable(); 
+		SearchRequestBuilder req = searchReq.setTypes(types);
 		
 		// add filters and aggregations
 		if(aggregation != null){
@@ -251,14 +253,14 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param tables
 	 * @return
 	 */
-	public Map<String, Integer> typesForColumns(List<String> tables){
+	public Map<String, Integer> typesForColumns(List<TableRelation> relations){
 		HashMap<String, Integer> colType = new HashMap<String, Integer>();
 		colType.put(Heading.ID, Types.VARCHAR);
 		colType.put(Heading.TYPE, Types.VARCHAR);
 		colType.put(Heading.INDEX, Types.VARCHAR);
-		for(String table : tables){
-			if(!tableColumnInfo.containsKey(table)) continue;
-			colType.putAll( tableColumnInfo.get(table) );
+		for(TableRelation table : relations){
+			if(!tableColumnInfo.containsKey(table.getTable())) continue;
+			colType.putAll( tableColumnInfo.get(table.getTable()) );
 		}
 		return colType;
 	}

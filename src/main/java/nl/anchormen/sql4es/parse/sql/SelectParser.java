@@ -1,6 +1,5 @@
 package nl.anchormen.sql4es.parse.sql;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
@@ -11,6 +10,7 @@ import nl.anchormen.sql4es.ESQueryState;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.TableRelation;
 import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.ColumnReference;
 import nl.anchormen.sql4es.model.expression.ICalculation;
@@ -46,22 +46,22 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				String alias = null;
 				if(sc.getAlias().isPresent()) alias = sc.getAlias().get();
 				Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
+				column.setAlias(alias);
 				if(col2 != null){
 					if(col2.getAlias() != null && alias != null && !col2.getAlias().equals(alias)){
-						column.setAlias(alias);
 						state.getHeading().add(column);
 					}else {
+						state.getHeading().add(column);
 						if(col2.getAlias() == null) col2.setAlias(alias);
 						col2.setVisible(true);
 						col2.setIndex(column.getIndex());
 					}
 				}else{
-					column.setAlias(alias);
 					state.getHeading().add(column);
 				}
 			}
 		}else{
-			state.getHeading().add(new Column("*", state.getHeading().getColumnCount()));
+			state.getHeading().add(createColumn(node.toString(), state.getRelations(), null));
 		}
 		return true;
 	}
@@ -69,11 +69,11 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	@Override
 	protected Column visitExpression(Expression node, QueryState state){
 		if( node instanceof QualifiedNameReference){
-			return new Column( ((QualifiedNameReference)node).getName().toString() ,state.getHeading().getColumnCount() );
+			return createColumn( ((QualifiedNameReference)node).getName().toString(), state.getRelations(), null);
 		}else if(node instanceof DereferenceExpression){
 			// parse columns like 'reference.field'
 			String column = visitDereferenceExpression((DereferenceExpression)node);
-			return new Column(column, state.getHeading().getColumnCount());
+			return createColumn( column, state.getRelations(), null);
 		}else if(node instanceof FunctionCall){
 			FunctionCall fc = (FunctionCall)node;
 			String operator = fc.getName().toString();
@@ -88,7 +88,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				 column = ((QualifiedNameReference)fc.getArguments().get(0)).getName().toString();
 			}
 			try{
-				return new Column(column, Operation.valueOf(operator.trim().toUpperCase()), state.getHeading().getColumnCount());
+				return createColumn(column, state.getRelations(), Operation.valueOf(operator.trim().toUpperCase()));
 			}catch(Exception e){
 				state.addException("Unable to parse function due to: "+e.getMessage());
 				return null;
@@ -99,7 +99,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			colName = colName.substring(1, colName.lastIndexOf(')'));
 			ICalculation calc = new ArithmeticParser().visitArithmeticBinary((ArithmeticBinaryExpression)node, state);
 			if(state.hasException()) return null;
-			Column calcCol = new Column(colName, state.getHeading().getColumnCount());
+			Column calcCol = new Column(colName);
 			calcCol.setCalculation(calc);
 			return calcCol;
 		}else{
@@ -143,8 +143,8 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
 				if(col2 != null) return new ColumnReference(col2);
 				else {
-					column = column.setVisible(false);
 					state.getHeading().add(column);
+					column = column.setVisible(false);
 					return new ColumnReference(column);
 				}
 			}else state.addException("Unknown expression '"+node.getClass().getName()+"' encountered in ArithmeticExpression"); 
@@ -153,22 +153,26 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	}
 	
 	/**
-	 * Finds all column references within the provided expression tree. These columns are needed
-	 * within the select
-	 * @param expr
+	 * Create's a Column for the provided name and list with tables. This 
+	 * @param name
+	 * @param tables
 	 * @return
 	 */
-	public List<Column> findColumns(ICalculation expr){
-		List<Column> result = new ArrayList<Column>();
-		if(expr instanceof SingleValue) return result;
-		if(expr instanceof ColumnReference) {
-			result.add( ((ColumnReference)expr).getColumn() );
-		}else{
-			SimpleCalculation sar = (SimpleCalculation)expr;
-			result.addAll( findColumns(sar.left()) );
-			result.addAll( findColumns(sar.right()) );
+	private Column createColumn(String name, List<TableRelation> tables, Operation op){
+		if(name.contains(".")){
+			String prefix = name.split("\\.")[0];
+			for(TableRelation tr : tables){
+				if(tr.getAlias() != null && prefix.equals(tr.getAlias())){
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
+				}else if (prefix.equals(tr.getTable())){
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
+				}
+			}
 		}
-		return result;
+		if(op != null) return new Column(name, op);
+		return new Column(name);
 	}
 	
 }

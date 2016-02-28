@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.TableRelation;
 
 /**
  * Interface for objects holding query state information used during SQL parsing by presto
@@ -69,6 +70,6 @@ public interface QueryState {
 	 * Gets set of relations being accessed in the query (if any)
 	 * @return
 	 */
-	public List<String> getRelations();
+	public List<TableRelation> getRelations();
 	
 }
