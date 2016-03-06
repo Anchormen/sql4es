@@ -15,6 +15,8 @@ public class Column implements Comparable<Column>{
 	public enum Operation {NONE, AVG, SUM, MIN, MAX, COUNT, HIGHLIGHT}
 	
 	private String columnName;
+	private String tableName;
+	private String tableAlias;
 	private Operation op = Operation.NONE;
 	private String alias = null;
 	private int index = -1;
@@ -22,12 +24,11 @@ public class Column implements Comparable<Column>{
 	private ICalculation calculation = null;
 	private boolean isVisible = true;
 	
-	public Column(String name, Operation op, int index) {
-		this.columnName = name;
+	public Column(String columnName, Operation op) {
+		this.columnName = columnName;
 		this.op = op;
-		this.index = index;
-		if(name.equals("*") && op == Operation.COUNT) alias = "count(*)";
-		else if(name.equals("1") && op == Operation.COUNT) alias = "count(1)";
+		if(columnName.equals("*") && op == Operation.COUNT) alias = "count(*)";
+		else if(columnName.equals("1") && op == Operation.COUNT) alias = "count(1)";
 		
 		switch(this.op){
 			case COUNT: sqlType = Types.BIGINT; break;
@@ -42,9 +43,8 @@ public class Column implements Comparable<Column>{
 		if(calculation != null) sqlType = Types.DOUBLE;
 	}	
 	
-	public Column(String column, int index) {
-		this.columnName = column;
-		this.index = index;
+	public Column(String columnName) {
+		this.columnName = columnName;
 	}
 	
 	/**
@@ -60,6 +60,20 @@ public class Column implements Comparable<Column>{
 	
 	public int getIndex(){
 		return this.index;
+	}
+	
+	public Column setTable(String name, String tableAlias){
+		this.tableName = name;
+		this.tableAlias = tableAlias;
+		return this;
+	}
+	
+	public String getTable(){
+		return this.tableName;
+	}
+	
+	public String getTableAlias(){
+		return this.tableAlias;
 	}
 	
 	public String toString(){
@@ -110,18 +124,38 @@ public class Column implements Comparable<Column>{
 	}
 	
 	/**
-	 * @return the full name including the operator (if not NONE). For example 'SUM(column)'
+	 * @return the full name including the table, operator (if not NONE). For example 'SUM(column)'
 	 */
 	public String getFullName(){
+		String name = getColumn();
+		if(this.tableAlias != null) name = tableAlias+"."+name;
+		else if(this.tableName != null) name = tableName+"."+name;
 		switch(op){
-			case AVG: return "avg("+getColumn()+")";
-			case COUNT: return "count("+getColumn()+")";
-			case MAX: return "max("+getColumn()+")";
-			case MIN: return "min("+getColumn()+")";
-			case SUM: return "sum("+getColumn()+")";
-			default : return getColumn();
+			case AVG: return "avg("+name+")";
+			case COUNT: return "count("+name+")";
+			case MAX: return "max("+name+")";
+			case MIN: return "min("+name+")";
+			case SUM: return "sum("+name+")";
+			default : return name;
 		}
 	}
+	
+	/**
+	 * @return the full name WITHOUT table but including the operator (if not NONE). For example 'SUM(column)'
+	 */
+	public String getAggName(){
+		String name = getColumn();
+		switch(op){
+			case AVG: return "avg("+name+")";
+			case COUNT: return "count("+name+")";
+			case MAX: return "max("+name+")";
+			case MIN: return "min("+name+")";
+			case SUM: return "sum("+name+")";
+			default : return name;
+		}
+	}
+	
+	
 	
 	public int getSqlType() {
 		return sqlType;
@@ -188,4 +222,5 @@ public class Column implements Comparable<Column>{
 		if(!this.isVisible && o.isVisible) return 1;
 		return this.getIndex() - o.getIndex();
 	}
+
 }

@@ -16,9 +16,6 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
@@ -27,9 +24,9 @@ import com.facebook.presto.sql.tree.SortItem;
 
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.BasicQueryState;
-import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
+import nl.anchormen.sql4es.model.TableRelation;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.expression.IComparison;
 
@@ -47,6 +44,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	private final static HavingParser havingParser = new HavingParser();
 	private final static RelationParser relationParser = new RelationParser();
 	private final static GroupParser groupParser = new GroupParser();
+	private final static OrderByParser orderOarser = new OrderByParser();
 	
 	private String sql;
 	private int maxRows = -1;
@@ -66,7 +64,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 */
 	public Object[] parse(String sql, QueryBody queryBody, int maxRows, SearchRequestBuilder searchReq, 
 			Properties props, Map<String, Map<String, Integer>> tableColumnInfo) throws SQLException{
-		this.sql = sql.replace("\r", " ").replace("\n", " ");;
+		this.sql = sql.replace("\r", " ").replace("\n", " ");// TODO: this removes linefeeds from string literals as well!
 		this.props = props;
 		this.maxRows = maxRows;
 		this.tableColumnInfo = tableColumnInfo;
@@ -86,7 +84,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		this.heading = new Heading();
 		BasicQueryState state = new BasicQueryState(sql, heading, props);
 		int limit = -1;
-		List<String> relations = new ArrayList<String>();
+		List<TableRelation> relations = new ArrayList<TableRelation>();
 		AggregationBuilder aggregation = null;
 		QueryBuilder query = null;
 		IComparison having = null;
@@ -114,7 +112,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 				return new Object[]{state};
 			}
 			for(int i=0; i<relations.size(); i++){
-				if(relations.get(i).toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
+				if(relations.get(i).getTable().toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
 					useCache = true;
 					relations.remove(i);
 					i--;
@@ -164,27 +162,9 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		// parse ORDER BY
 		if(!node.getOrderBy().isEmpty()){
 			for(SortItem si : node.getOrderBy()){
-				String orderKey;
-				if(si.getSortKey() instanceof DereferenceExpression){
-					orderKey = SelectParser.visitDereferenceExpression((DereferenceExpression)si.getSortKey());
-				}else if (si.getSortKey() instanceof FunctionCall){
-					orderKey = si.getSortKey().toString()
-							.replaceAll("\"","").replaceAll("\\*", "\\\\*")
-							.replaceAll("\\(", "\\s*\\\\(\\s*").replaceAll("\\)", "\\s*\\\\)\\s*");
-				}else {
-					orderKey = ((QualifiedNameReference)si.getSortKey()).getName().toString();
-				}
-				orderKey = Heading.findOriginal(state.originalSql()+";", orderKey, "order by.+", "\\W");
-				Column column = heading.getColumnByLabel(orderKey);
-				if(column != null){
-					if(si.getOrdering().toString().startsWith("ASC")){
-						orderings.add(new OrderBy(column.getColumn(), SortOrder.ASC, column.getIndex()));
-					}else{
-						orderings.add(new OrderBy(column.getColumn(), SortOrder.DESC, column.getIndex()));
-					}
-				}else{
-					state.addException("Order key '"+orderKey+"' is not specified in SELECT clause");
-				}
+				OrderBy ob = si.accept(orderOarser, state);
+				if(state.hasException()) return new Object[]{state};
+				orderings.add(ob);
 			}
 		}
 		if(state.hasException()) return new Object[]{state};
@@ -206,11 +186,12 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param useCache
 	 */
 	@SuppressWarnings("rawtypes")
-	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<String> relations,
+	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<TableRelation> relations,
 			QueryBuilder query, AggregationBuilder aggregation, IComparison having, List<OrderBy> orderings,
 			int limit, boolean useCache, boolean requestScore) {
 		String[] types = new String[relations.size()];
-		SearchRequestBuilder req = searchReq.setTypes(relations.toArray(types));
+		for(int i=0; i<relations.size(); i++) types[i] = relations.get(i).getTable(); 
+		SearchRequestBuilder req = searchReq.setTypes(types);
 		
 		// add filters and aggregations
 		if(aggregation != null){
@@ -251,14 +232,14 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param tables
 	 * @return
 	 */
-	public Map<String, Integer> typesForColumns(List<String> tables){
+	public Map<String, Integer> typesForColumns(List<TableRelation> relations){
 		HashMap<String, Integer> colType = new HashMap<String, Integer>();
 		colType.put(Heading.ID, Types.VARCHAR);
 		colType.put(Heading.TYPE, Types.VARCHAR);
 		colType.put(Heading.INDEX, Types.VARCHAR);
-		for(String table : tables){
-			if(!tableColumnInfo.containsKey(table)) continue;
-			colType.putAll( tableColumnInfo.get(table) );
+		for(TableRelation table : relations){
+			if(!tableColumnInfo.containsKey(table.getTable())) continue;
+			colType.putAll( tableColumnInfo.get(table.getTable()) );
 		}
 		return colType;
 	}

@@ -1,8 +1,8 @@
 package nl.anchormen.sql4es.model.expression;
 
-import java.util.List;
-
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
+
+import nl.anchormen.sql4es.ESResultSet;
 
 public class SingleValue implements ICalculation{
 
@@ -22,7 +22,7 @@ public class SingleValue implements ICalculation{
 	}
 
 	@Override
-	public Number evaluate(List<Object> row){
+	public Number evaluate(ESResultSet result, int rowNr){
 		return this.value;
 	}
 

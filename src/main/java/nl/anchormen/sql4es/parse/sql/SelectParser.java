@@ -1,8 +1,5 @@
 package nl.anchormen.sql4es.parse.sql;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
@@ -11,6 +8,7 @@ import nl.anchormen.sql4es.ESQueryState;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
+import nl.anchormen.sql4es.model.TableRelation;
 import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.ColumnReference;
 import nl.anchormen.sql4es.model.expression.ICalculation;
@@ -26,6 +24,7 @@ import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.SelectItem;
 import com.facebook.presto.sql.tree.SingleColumn;
+import com.facebook.presto.sql.tree.SubscriptExpression;
 
 /**
  * Parses the SELECT part of the SQL and is responsible to fill the {@link Heading} object within the passed {@link ESQueryState}.
@@ -45,23 +44,26 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			if(column != null){
 				String alias = null;
 				if(sc.getAlias().isPresent()) alias = sc.getAlias().get();
+				column.setAlias(alias);
 				Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
 				if(col2 != null){
+					if(!col2.isVisible()) {
+						state.getHeading().remove(col2);
+					}
 					if(col2.getAlias() != null && alias != null && !col2.getAlias().equals(alias)){
-						column.setAlias(alias);
 						state.getHeading().add(column);
 					}else {
+						state.getHeading().add(column);
 						if(col2.getAlias() == null) col2.setAlias(alias);
 						col2.setVisible(true);
 						col2.setIndex(column.getIndex());
 					}
 				}else{
-					column.setAlias(alias);
 					state.getHeading().add(column);
 				}
 			}
 		}else{
-			state.getHeading().add(new Column("*", state.getHeading().getColumnCount()));
+			state.getHeading().add(createColumn(node.toString(), null, state, "select.+", ".+from"));
 		}
 		return true;
 	}
@@ -69,11 +71,11 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	@Override
 	protected Column visitExpression(Expression node, QueryState state){
 		if( node instanceof QualifiedNameReference){
-			return new Column( ((QualifiedNameReference)node).getName().toString() ,state.getHeading().getColumnCount() );
+			return createColumn( ((QualifiedNameReference)node).getName().toString(), null, state, "select.+", ".+from");
 		}else if(node instanceof DereferenceExpression){
 			// parse columns like 'reference.field'
 			String column = visitDereferenceExpression((DereferenceExpression)node);
-			return new Column(column, state.getHeading().getColumnCount());
+			return createColumn( column, null, state, "select.+", ".+from");
 		}else if(node instanceof FunctionCall){
 			FunctionCall fc = (FunctionCall)node;
 			String operator = fc.getName().toString();
@@ -88,7 +90,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				 column = ((QualifiedNameReference)fc.getArguments().get(0)).getName().toString();
 			}
 			try{
-				return new Column(column, Operation.valueOf(operator.trim().toUpperCase()), state.getHeading().getColumnCount());
+				return createColumn(column, Operation.valueOf(operator.trim().toUpperCase()), state, "select.+", ".+from");
 			}catch(Exception e){
 				state.addException("Unable to parse function due to: "+e.getMessage());
 				return null;
@@ -99,10 +101,10 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			colName = colName.substring(1, colName.lastIndexOf(')'));
 			ICalculation calc = new ArithmeticParser().visitArithmeticBinary((ArithmeticBinaryExpression)node, state);
 			if(state.hasException()) return null;
-			Column calcCol = new Column(colName, state.getHeading().getColumnCount());
+			Column calcCol = new Column(colName);
 			calcCol.setCalculation(calc);
 			return calcCol;
-		}else{
+		}else {
 			state.addException("Unable to parse type "+node.getClass()+" in Select");
 		}
 		return null;
@@ -114,7 +116,14 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 		}else return visitDereferenceExpression((DereferenceExpression)node.getBase())+"."+node.getFieldName();
 	}
 	
+	/**
+	 * Parses computations on selected fields such as 'select sum(a)/1000 ...'
+	 * @author cversloot
+	 *
+	 */
 	private class ArithmeticParser extends AstVisitor<ICalculation, QueryState>{
+		
+		private SelectParser selectParser = new SelectParser();
 		
 		@Override
 		protected ICalculation visitArithmeticBinary(ArithmeticBinaryExpression node, QueryState state){
@@ -138,13 +147,28 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				ICalculation calc = value.accept(this, state);
 				calc.setSign(sign);
 				return calc;
+			}else if(node instanceof SubscriptExpression){
+				SubscriptExpression se = (SubscriptExpression) node;
+				Column column = selectParser.visitExpression(se.getBase(), state);
+				try{
+					int offset = Integer.parseInt( se.getIndex().toString() );
+					Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
+					if(col2 != null) return new ColumnReference(col2, offset);
+					else {
+						state.getHeading().add(column);
+						column = column.setVisible(false);
+						return new ColumnReference(column, offset);
+					}
+				}catch(Exception e){
+					state.addException("Unable to parse "+node+" due to: "+e.getMessage());
+				}
 			}else if(node instanceof Expression){
-				Column column = new SelectParser().visitExpression((Expression)node, state);
+				Column column = selectParser.visitExpression((Expression)node, state);
 				Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
 				if(col2 != null) return new ColumnReference(col2);
 				else {
-					column = column.setVisible(false);
 					state.getHeading().add(column);
+					column = column.setVisible(false);
 					return new ColumnReference(column);
 				}
 			}else state.addException("Unknown expression '"+node.getClass().getName()+"' encountered in ArithmeticExpression"); 
@@ -153,22 +177,29 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	}
 	
 	/**
-	 * Finds all column references within the provided expression tree. These columns are needed
-	 * within the select
-	 * @param expr
+	 * Create's a Column for the provided name and list with tables. This 
+	 * @param name
+	 * @param tables
 	 * @return
 	 */
-	public List<Column> findColumns(ICalculation expr){
-		List<Column> result = new ArrayList<Column>();
-		if(expr instanceof SingleValue) return result;
-		if(expr instanceof ColumnReference) {
-			result.add( ((ColumnReference)expr).getColumn() );
-		}else{
-			SimpleCalculation sar = (SimpleCalculation)expr;
-			result.addAll( findColumns(sar.left()) );
-			result.addAll( findColumns(sar.right()) );
+	public static Column createColumn(String name, Operation op, QueryState state, String prefix, String suffix){
+		if(!name.equals("*")){
+			name = Heading.findOriginal(state.originalSql(), name, prefix, suffix);
 		}
-		return result;
+		if(name.contains(".")){
+			String head = name.split("\\.")[0];
+			for(TableRelation tr : state.getRelations()){
+				if(tr.getAlias() != null && head.equals(tr.getAlias())){
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
+				}else if (head.equals(tr.getTable())){
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
+				}
+			}
+		}
+		if(op != null) return new Column(name, op);
+		return new Column(name);
 	}
 	
 }

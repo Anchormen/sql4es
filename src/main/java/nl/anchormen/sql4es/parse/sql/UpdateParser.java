@@ -46,7 +46,7 @@ public class UpdateParser extends AstVisitor<List<Object>, QueryState>{
 		List<String> fields = insert.getColumns().get();
 		List<Object> values = insert.getQuery().getQueryBody().accept(this,  state);
 		if(state.hasException()) throw state.getException();
-		for(String field : fields) state.getHeading().add(new Column(field, state.getHeading().getColumnCount()));
+		for(String field : fields) state.getHeading().add(new Column(field));
 		
 		return values;
 	}

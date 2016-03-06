@@ -73,7 +73,7 @@ public class AggregationsIT extends Sql4EsBase {
 		count = 0;
 		while(rs.next()){
 			count++;
-			assertEquals(45, rs.getShort("suM(shortNum)"));
+			assertEquals(45, rs.getShort("sum(shortNum)"));
 		}
 		assertEquals(1, count);
 		
@@ -84,7 +84,7 @@ public class AggregationsIT extends Sql4EsBase {
 		count = 0;
 		while(rs.next()){
 			count++;
-			assertEquals(4.5, rs.getFloat("AVG(floatNum)"), 0.001f);
+			assertEquals(4.5, rs.getFloat("avg(floatNum)"), 0.001f);
 		}
 		assertEquals(1, count);
 		st.close();

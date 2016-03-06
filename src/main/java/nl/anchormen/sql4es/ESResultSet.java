@@ -104,13 +104,12 @@ public class ESResultSet implements ResultSet {
 	}
 	
 	public void add(List<Object> row) {
-		for(Column column : heading.columns())
-			if(column.hasCalculation()) {
-				Number value = column.getCalculation().evaluate(row);
-				row.set(column.getIndex(), value);
-			}
 		rows.add(row.subList(0, heading.getColumnCount()));
 		if(rows.size() > total) total = rows.size(); // can happen when rows are being exploded
+	}
+	
+	public int rowCount(){
+		return rows.size();
 	}
 	
 	public List<Object> getRow(int index){
@@ -137,7 +136,11 @@ public class ESResultSet implements ResultSet {
 		return this.offset;
 	}
 	
-	
+	/**
+	 * Removes rows that do not match the provided Having clause
+	 * @param having
+	 * @throws SQLException
+	 */
 	public void filterHaving(IComparison having) throws SQLException{
 		for(int i=0; i<rows.size(); i++){
 			if(!having.evaluate(rows.get(i))){
@@ -146,6 +149,27 @@ public class ESResultSet implements ResultSet {
 			}
 		}
 		this.total = rows.size();
+	}
+	
+	/**
+	 * Executes any computations specified on columns
+	 */
+	public void executeComputations(){
+		boolean calculationFound = false;
+		for(Column column : heading.columns()) 
+			if(column.hasCalculation()){
+				calculationFound = true;
+				break;
+		}
+		if(!calculationFound) return;
+		for(int i=0; i<rows.size(); i++){
+			for(Column column : heading.columns()){
+				if(column.hasCalculation()) {
+					Number value = column.getCalculation().evaluate(this, i);
+					rows.get(i).set(column.getIndex(), value);
+				}
+			}
+		}
 	}
 	
 	@Override

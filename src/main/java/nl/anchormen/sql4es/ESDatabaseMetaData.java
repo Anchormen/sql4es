@@ -7,6 +7,7 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -692,15 +693,15 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			throws SQLException {
 		
 		Heading heading = new Heading();
-		heading.add(new Column("PROCEDURE_CAT", 0));
-		heading.add(new Column("PROCEDURE_SCHEM", 1));
-		heading.add(new Column("PROCEDURE_NAME", 2));
-		heading.add(new Column("reserved_1", 3));
-		heading.add(new Column("reserved_2", 4));
-		heading.add(new Column("reserved_3", 5));
-		heading.add(new Column("REMARKS", 6));
-		heading.add(new Column("PROCEDURE_TYPE", 7));
-		heading.add(new Column("SPECIFIC_NAME", 8));
+		heading.add(new Column("PROCEDURE_CAT"));
+		heading.add(new Column("PROCEDURE_SCHEM"));
+		heading.add(new Column("PROCEDURE_NAME"));
+		heading.add(new Column("reserved_1"));
+		heading.add(new Column("reserved_2"));
+		heading.add(new Column("reserved_3"));
+		heading.add(new Column("REMARKS"));
+		heading.add(new Column("PROCEDURE_TYPE"));
+		heading.add(new Column("SPECIFIC_NAME"));
 		return new ESResultSet(heading, 0, heading.getColumnCount());
 	}
 
@@ -709,26 +710,26 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			String columnNamePattern) throws SQLException {
 		
 		Heading heading = new Heading();
-		heading.add(new Column("PROCEDURE_CAT", 0));
-		heading.add(new Column("PROCEDURE_SCHEM", 1));
-		heading.add(new Column("PROCEDURE_NAME", 2));
-		heading.add(new Column("COLUMN_NAME", 3));
-		heading.add(new Column("COLUMN_TYPE", 4));
-		heading.add(new Column("DATA_TYPE", 5));
-		heading.add(new Column("TYPE_NAME", 6));
-		heading.add(new Column("PRECISION", 7));
-		heading.add(new Column("LENGTH", 8));
-		heading.add(new Column("SCALE", 9));
-		heading.add(new Column("RADIX", 10));
-		heading.add(new Column("NULLABLE", 11));
-		heading.add(new Column("REMARKS", 12));
-		heading.add(new Column("COLUMN_DEF", 13));
-		heading.add(new Column("SQL_DATA_TYPE", 14));
-		heading.add(new Column("SQL_DATETIME_SUB", 15));
-		heading.add(new Column("CHAR_OCTET_LENGTH", 16));
-		heading.add(new Column("ORDINAL_POSITION", 17));
-		heading.add(new Column("IS_NULLABLE", 18));
-		heading.add(new Column("SPECIFIC_NAME", 19));
+		heading.add(new Column("PROCEDURE_CAT"));
+		heading.add(new Column("PROCEDURE_SCHEM"));
+		heading.add(new Column("PROCEDURE_NAME"));
+		heading.add(new Column("COLUMN_NAME"));
+		heading.add(new Column("COLUMN_TYPE"));
+		heading.add(new Column("DATA_TYPE"));
+		heading.add(new Column("TYPE_NAME"));
+		heading.add(new Column("PRECISION"));
+		heading.add(new Column("LENGTH"));
+		heading.add(new Column("SCALE"));
+		heading.add(new Column("RADIX"));
+		heading.add(new Column("NULLABLE"));
+		heading.add(new Column("REMARKS"));
+		heading.add(new Column("COLUMN_DEF"));
+		heading.add(new Column("SQL_DATA_TYPE"));
+		heading.add(new Column("SQL_DATETIME_SUB"));
+		heading.add(new Column("CHAR_OCTET_LENGTH"));
+		heading.add(new Column("ORDINAL_POSITION"));
+		heading.add(new Column("IS_NULLABLE"));
+		heading.add(new Column("SPECIFIC_NAME"));
 		return new ESResultSet(heading, 0, heading.getColumnCount());
 	}
 
@@ -738,16 +739,16 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		//schemaPattern = index;
 		
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_CAT", 0));
-		heading.add(new Column("TABLE_SCHEM", 1));
-		heading.add(new Column("TABLE_NAME", 2));
-		heading.add(new Column("TABLE_TYPE", 3));
-		heading.add(new Column("REMARKS", 4));
-		heading.add(new Column("TYPE_CAT", 5));
-		heading.add(new Column("TYPE_SCHEM", 6));
-		heading.add(new Column("TYPE_NAME", 7));
-		heading.add(new Column("SELF_REFERENCING_COL_NAME", 8));
-		heading.add(new Column("REF_GENERATION", 9));
+		heading.add(new Column("TABLE_CAT"));
+		heading.add(new Column("TABLE_SCHEM"));
+		heading.add(new Column("TABLE_NAME"));
+		heading.add(new Column("TABLE_TYPE"));
+		heading.add(new Column("REMARKS"));
+		heading.add(new Column("TYPE_CAT"));
+		heading.add(new Column("TYPE_SCHEM"));
+		heading.add(new Column("TYPE_NAME"));
+		heading.add(new Column("SELF_REFERENCING_COL_NAME"));
+		heading.add(new Column("REF_GENERATION"));
 		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
 		//if(catalog != null && !catalog.equals(Utils.CATALOG)) return result;
 		boolean lookForTables = false;
@@ -763,9 +764,9 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			    .prepareState().get().getState()
 			    .getMetaData().getIndices();
 		for(ObjectCursor<String> index : indices.keys()){
-			if(schemaPattern != null && !Pattern.matches(schemaPattern, index.value)) continue;
+			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, index.value)) continue;
 			for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
-				if(tableNamePattern != null && !Pattern.matches(tableNamePattern, type.value)) continue;
+				if(tableNamePattern != null  && tableNamePattern.length() > 0 && !Pattern.matches(tableNamePattern, type.value)) continue;
 				row = result.getNewRow();
 				row.set(2, type.value);
 				row.set(3, "TABLE");
@@ -776,7 +777,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		// add aliases as VIEW on this index
 		ImmutableOpenMap<String, List<AliasMetaData>> aliasMd = client.admin().indices().prepareGetAliases().get().getAliases();
 		for(ObjectCursor<String> key : aliasMd.keys()){
-			if(schemaPattern != null && !Pattern.matches(schemaPattern, key.value)) continue;
+			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
 			for(AliasMetaData amd : aliasMd.get(key.value)){
 				row = result.getNewRow();
 				row.set(1, amd.alias());
@@ -791,7 +792,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		if(result.getNrRows() <= 1){
 			for(ObjectCursor<String> key : aliasMd.keys()){
 				for(AliasMetaData amd : aliasMd.get(key.value)){
-					if(schemaPattern != null && !Pattern.matches(schemaPattern, amd.alias())) continue;
+					if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
 					row = result.getNewRow();
 					row.set(1, key.value);
 					row.set(2, "n/a");
@@ -803,6 +804,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		}
 		
 		result.setTotal(result.getNrRows());
+		//System.out.println("getTables("+catalog+", "+schemaPattern+", "+tableNamePattern+", "+Arrays.toString(types)+") -->\r\n"+result);
 		return result;
 	}
 
@@ -816,8 +818,8 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
     		.getMetaData().getAliasAndIndexLookup();
 		
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_SCHEM", 0));
-		heading.add(new Column("TABLE_CATALOG", 1));
+		heading.add(new Column("TABLE_SCHEM"));
+		heading.add(new Column("TABLE_CATALOG"));
 		ESResultSet result = new ESResultSet(heading, indices.size(), heading.getColumnCount());
 		for(String key : aliasAndIndices.keySet()){
 			List<Object> row = result.getNewRow();
@@ -831,7 +833,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	@Override
 	public ResultSet getCatalogs() throws SQLException {
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_CAT", 0));
+		heading.add(new Column("TABLE_CAT"));
 		ESResultSet result = new ESResultSet(heading, 1, heading.getColumnCount());
 		List<Object> row = result.getNewRow();
 		row.set(0, "elasticsearch");
@@ -842,7 +844,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	@Override
 	public ResultSet getTableTypes() throws SQLException {
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_TYPE", 0));
+		heading.add(new Column("TABLE_TYPE"));
 		ESResultSet result = new ESResultSet(heading, 1, heading.getColumnCount());
 		List<Object> row = result.getNewRow();
 		row.set(0, "TABLE");
@@ -867,30 +869,30 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		boolean lateral = Utils.getBooleanProp(clientInfo, Utils.PROP_RESULT_NESTED_LATERAL, true);
 		
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_CAT", 0));
-		heading.add(new Column("TABLE_SCHEM", 1));
-		heading.add(new Column("TABLE_NAME", 2));
-		heading.add(new Column("COLUMN_NAME", 3));
-		heading.add(new Column("DATA_TYPE", 4));
-		heading.add(new Column("TYPE_NAME", 5));
-		heading.add(new Column("COLUMN_SIZE", 6));
-		heading.add(new Column("BUFFER_LENGTH", 7));
-		heading.add(new Column("DECIMAL_DIGITS", 8));
-		heading.add(new Column("NUM_PREC_RADIX", 9));
-		heading.add(new Column("NULLABLE", 10));
-		heading.add(new Column("REMARKS", 11));
-		heading.add(new Column("COLUMN_DEF", 12));
-		heading.add(new Column("SQL_DATA_TYPE", 13));
-		heading.add(new Column("SQL_DATETIME_SUB", 14));
-		heading.add(new Column("CHAR_OCTET_LENGTH", 15));
-		heading.add(new Column("ORDINAL_POSITION", 16));
-		heading.add(new Column("IS_NULLABLE", 17));
-		heading.add(new Column("SCOPE_CATALOG", 18));
-		heading.add(new Column("SCOPE_SCHEMA", 19));
-		heading.add(new Column("SCOPE_TABLE", 20));
-		heading.add(new Column("SOURCE_DATA_TYPE", 21));
-		heading.add(new Column("IS_AUTOINCREMENT", 22));
-		heading.add(new Column("IS_GENERATEDCOLUMN", 23));
+		heading.add(new Column("TABLE_CAT"));
+		heading.add(new Column("TABLE_SCHEM"));
+		heading.add(new Column("TABLE_NAME"));
+		heading.add(new Column("COLUMN_NAME"));
+		heading.add(new Column("DATA_TYPE"));
+		heading.add(new Column("TYPE_NAME"));
+		heading.add(new Column("COLUMN_SIZE"));
+		heading.add(new Column("BUFFER_LENGTH"));
+		heading.add(new Column("DECIMAL_DIGITS"));
+		heading.add(new Column("NUM_PREC_RADIX"));
+		heading.add(new Column("NULLABLE"));
+		heading.add(new Column("REMARKS"));
+		heading.add(new Column("COLUMN_DEF"));
+		heading.add(new Column("SQL_DATA_TYPE"));
+		heading.add(new Column("SQL_DATETIME_SUB"));
+		heading.add(new Column("CHAR_OCTET_LENGTH"));
+		heading.add(new Column("ORDINAL_POSITION"));
+		heading.add(new Column("IS_NULLABLE"));
+		heading.add(new Column("SCOPE_CATALOG"));
+		heading.add(new Column("SCOPE_SCHEMA"));
+		heading.add(new Column("SCOPE_TABLE"));
+		heading.add(new Column("SOURCE_DATA_TYPE"));
+		heading.add(new Column("IS_AUTOINCREMENT"));
+		heading.add(new Column("IS_GENERATEDCOLUMN"));
 		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
 		//if(catalog != null && !catalog.equals(Utils.CATALOG)) return result;
 		
@@ -1070,12 +1072,12 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	@Override
 	public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
 		Heading heading = new Heading();
-		heading.add(new Column("TABLE_CAT", 0));
-		heading.add(new Column("TABLE_SCHEM", 1));
-		heading.add(new Column("TABLE_NAME", 2));
-		heading.add(new Column("COLUMN_NAME", 3));
-		heading.add(new Column("KEY_SEQ", 4));
-		heading.add(new Column("PK_NAME", 5));
+		heading.add(new Column("TABLE_CAT"));
+		heading.add(new Column("TABLE_SCHEM"));
+		heading.add(new Column("TABLE_NAME"));
+		heading.add(new Column("COLUMN_NAME"));
+		heading.add(new Column("KEY_SEQ"));
+		heading.add(new Column("PK_NAME"));
 		ESResultSet result = new ESResultSet(heading, 1, heading.getColumnCount());
 		List<Object> row = result.getNewRow();
 		row.set(0, catalog);

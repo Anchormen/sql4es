@@ -165,25 +165,26 @@ public class ESQueryState{
 			if(!orderings.isEmpty()){
 				rs.orderBy(orderings);
 			}
+			rs.executeComputations();
 			return rs;
 		}else{
 			// parse plain document hits
 			long total = esResponse.getHits().getTotalHits();
 			if(getLimit() > 0) total = Math.min(total, getLimit());
 			ESResultSet rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0);
+			rs.executeComputations();
 			return rs;
 		}
 	}
 	
-	public ResultSet moreResutls() throws SQLException {
+	public ResultSet moreResutls(boolean useLateral) throws SQLException {
 		if(result != null && result.getOffset() + result.getNrRows() >= result.getTotal()) return null;
 		if(result != null) result.close();
 		if(esResponse.getScrollId() != null ){
 			esResponse = client.prepareSearchScroll(esResponse.getScrollId())
 					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
 					.execute().actionGet();
-			ESResultSet rs = hitParser.parse(esResponse.getHits(), result.getHeading(), result.getTotal(), Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), 
-					Utils.getBooleanProp(props, Utils.PROP_RESULT_NESTED_LATERAL, true), result.getOffset() + result.getNrRows());
+			ESResultSet rs = convertResponse(useLateral);
 			if(rs.getNrRows() == 0) return null;
 			result = rs;
 			return result;
@@ -215,6 +216,10 @@ public class ESQueryState{
 	
 	public int getMaxRows(){
 		return maxRows;
+	}
+	
+	public ESQueryState copy() throws SQLException{
+		return new ESQueryState(client, statement);
 	}
 	
 	public int getLimit(){

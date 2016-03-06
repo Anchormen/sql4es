@@ -1,10 +1,10 @@
 package nl.anchormen.sql4es.model.expression;
 
-import java.util.List;
-
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression.Type;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
+
+import nl.anchormen.sql4es.ESResultSet;
 
 public class SimpleCalculation implements ICalculation {
 
@@ -26,9 +26,9 @@ public class SimpleCalculation implements ICalculation {
 	}
 	
 	@Override
-	public Number evaluate(List<Object> row) {
-		Number l = left.evaluate(row);
-		Number r = right.evaluate(row);
+	public Number evaluate(ESResultSet rs, int rowNr) {
+		Number l = left.evaluate(rs, rowNr);
+		Number r = right.evaluate(rs, rowNr);
 		switch(type){
 			case ADD : result = l.doubleValue() + r.doubleValue(); break;
 			case DIVIDE: result = l.doubleValue() / r.doubleValue(); break;
