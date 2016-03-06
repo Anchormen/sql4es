@@ -145,8 +145,61 @@ public class ArithmeticsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(2, count);
-		
+	}
 	
+	@Test
+	public void offsetComputations() throws Exception{
+		createIndexTypeWithDocs(index, type, true, 10,2);
+		
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		ResultSet rs = st.executeQuery("select intNum/shortNum[-1], intNum from "+type+" where intNum > 0 order by intNum asc");
+		ResultSetMetaData rsm = rs.getMetaData();
+		assertEquals(Types.FLOAT, rsm.getColumnType(1));
+		int count = 0;
+		while(rs.next()){
+			assert(new Float(rs.getFloat(1)).isNaN() || rs.getFloat(1) > 1);
+			count++;
+		}
+		assertEquals(9, count);
+		rs.close();
+		
+		rs = st.executeQuery("select distinct bool, count(1) as c, c/c[1] from "+type+" ");
+		count = 0;
+		while(rs.next()){
+			assert(new Float(rs.getFloat(3)).isNaN() || rs.getFloat(3) == 1);
+			count++;
+		}
+		assertEquals(2, count);
+		rs.close();
+		
+		rs = st.executeQuery("select distinct bool, count(1)/count(1)[1] as calc from "+type+" ");
+		count = 0;
+		while(rs.next()){
+			assert(new Float(rs.getFloat("calc")).isNaN() || rs.getFloat("calc") == 1);
+			count++;
+		}
+		assertEquals(2, count);
+		rs.close();
+		
+		rs = st.executeQuery("select distinct bool, count(1)/sum(longNum)[1] as calc from "+type+" ");
+		count = 0;
+		while(rs.next()){
+			assert(new Float(rs.getFloat("calc")).isNaN() || rs.getFloat("calc") < 0.5);
+			count++;
+		}
+		assertEquals(2, count);
+		rs.close();
+		
+		rs = st.executeQuery("select distinct nestedDoc.bool, count(nestedDoc.bool)/count(nestedDoc.bool)[-1] from "+type+" ");
+		count = 0;
+		while(rs.next()){
+			assert(new Float(rs.getFloat(2)).isNaN() || rs.getFloat(2) == 1);
+			count++;
+		}
+		assertEquals(2, count);
+		rs.close();
+		
+		st.close();
 	}
 	
 }

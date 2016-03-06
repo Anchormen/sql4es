@@ -77,6 +77,17 @@ public class Heading {
 		}
 	}
 	
+	public void remove(Column column){
+		for(int i=0; i<columns.size(); i++){
+			Column col = columns.get(i);
+			if(col.getIndex() == column.getIndex()){
+				columns.remove(i);
+				this.buildIndex();
+				break;
+			}
+		}
+	}
+	
 	/**
 	 * Returns if any of the columns equals '*' indicating all fields must be
 	 * fetched and provided in the ResultSet
@@ -111,8 +122,11 @@ public class Heading {
 	}
 	
 	public Column getColumnByNameAndOp(String colName, Operation op){
-		for(Column col : columns){
+		for(Column col : columns){ // first check columnname and operation
 			if(col.getColumn().equals(colName) && op == col.getOp()) return col;
+		}
+		for(Column col : columns){ // else check if it matches an alias
+			if(colName.equals(col.getAlias())) return col;
 		}
 		return null;
 	}
@@ -200,7 +214,7 @@ public class Heading {
 	 * @param columns
 	 */
 	public void reorderAndFixColumns(String originalSql, String prefix, String suffix){
-		Heading.fixColumnReferences(originalSql, prefix, suffix, columns);
+		//Heading.fixColumnReferences(originalSql, prefix, suffix, columns);
 		Collections.sort(this.columns);
 		for(int i=0; i<columns.size(); i++) columns.get(i).setIndex(i);
 		buildIndex();
@@ -229,8 +243,9 @@ public class Heading {
 	
 	public static String findOriginal(String originalSql, String target, String prefix, String suffix){
 		//if(target.contains("*")) return target;
-		Pattern p = Pattern.compile(prefix+"("+target.replaceAll("\\.", "\\\\.")+")"+suffix, Pattern.CASE_INSENSITIVE);
-		Matcher m = p.matcher(originalSql);
+		String pattern = target.replaceAll("\\*","\\\\*").replaceAll("\\(", "\\\\s*\\\\(\\\\s*").replaceAll("\\)", "\\\\s*\\\\)\\\\s*");
+		Pattern p = Pattern.compile(prefix+"("+pattern+")"+suffix, Pattern.CASE_INSENSITIVE);
+		Matcher m = p.matcher(originalSql.replaceAll("\"", "")); // replace quotes to fix things like SELECT "table"."field" FROM ...
 		if(m.find()){
 			return m.group(1);
 		}

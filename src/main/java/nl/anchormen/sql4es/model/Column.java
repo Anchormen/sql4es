@@ -222,4 +222,5 @@ public class Column implements Comparable<Column>{
 		if(!this.isVisible && o.isVisible) return 1;
 		return this.getIndex() - o.getIndex();
 	}
+
 }

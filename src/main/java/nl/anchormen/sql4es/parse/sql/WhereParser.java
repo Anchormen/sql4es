@@ -231,7 +231,7 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	private FieldAndType getFieldAndType(String colName, QueryState state){
 		colName = Heading.findOriginal(state.originalSql(), colName, "where.+", "\\W");
 		Column column = state.getHeading().getColumnByAlias(colName);
-		String properName = colName; 		
+		String properName = removeOptionalTableReference(colName, state); 		
 		if(column != null) properName = column.getColumn();
 		String[] parts = properName.split("\\.");
 		for(int i=1; i<parts.length; i++) parts[i] = parts[i-1]+"."+parts[i];
@@ -246,6 +246,20 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		}
 		// in rare instances the type is unknown (added recently?)
 		return new FieldAndType(properName, Types.OTHER);
+	}
+	
+	private String removeOptionalTableReference(String name, QueryState state){
+		if(name.contains(".")){
+			String head = name.split("\\.")[0];
+			for(TableRelation tr : state.getRelations()){
+				if(tr.getAlias() != null && head.equals(tr.getAlias())){
+					return name.substring(name.indexOf('.')+1);
+				}else if (head.equals(tr.getTable())){
+					return name.substring(name.indexOf('.')+1);
+				}
+			}
+		}
+		return name;
 	}
 	
 	private class FieldAndType{

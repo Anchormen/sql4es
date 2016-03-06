@@ -16,9 +16,6 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
@@ -27,7 +24,6 @@ import com.facebook.presto.sql.tree.SortItem;
 
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.BasicQueryState;
-import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
 import nl.anchormen.sql4es.model.TableRelation;
@@ -48,6 +44,7 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	private final static HavingParser havingParser = new HavingParser();
 	private final static RelationParser relationParser = new RelationParser();
 	private final static GroupParser groupParser = new GroupParser();
+	private final static OrderByParser orderOarser = new OrderByParser();
 	
 	private String sql;
 	private int maxRows = -1;
@@ -165,27 +162,9 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		// parse ORDER BY
 		if(!node.getOrderBy().isEmpty()){
 			for(SortItem si : node.getOrderBy()){
-				String orderKey;
-				if(si.getSortKey() instanceof DereferenceExpression){
-					orderKey = SelectParser.visitDereferenceExpression((DereferenceExpression)si.getSortKey());
-				}else if (si.getSortKey() instanceof FunctionCall){
-					orderKey = si.getSortKey().toString()
-							.replaceAll("\"","").replaceAll("\\*", "\\\\*")
-							.replaceAll("\\(", "\\s*\\\\(\\s*").replaceAll("\\)", "\\s*\\\\)\\s*");
-				}else {
-					orderKey = ((QualifiedNameReference)si.getSortKey()).getName().toString();
-				}
-				orderKey = Heading.findOriginal(state.originalSql()+";", orderKey, "order by.+", "\\W");
-				Column column = heading.getColumnByLabel(orderKey);
-				if(column != null){
-					if(si.getOrdering().toString().startsWith("ASC")){
-						orderings.add(new OrderBy(column.getColumn(), SortOrder.ASC, column.getIndex()));
-					}else{
-						orderings.add(new OrderBy(column.getColumn(), SortOrder.DESC, column.getIndex()));
-					}
-				}else{
-					state.addException("Order key '"+orderKey+"' is not specified in SELECT clause");
-				}
+				OrderBy ob = si.accept(orderOarser, state);
+				if(state.hasException()) return new Object[]{state};
+				orderings.add(ob);
 			}
 		}
 		if(state.hasException()) return new Object[]{state};

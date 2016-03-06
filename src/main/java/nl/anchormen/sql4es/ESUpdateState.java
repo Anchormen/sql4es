@@ -171,7 +171,7 @@ public class ESUpdateState {
 		
 		// execute query using nested resultsets
 		ResultSet rs = queryState.execute(false);
-		Heading headingToInsert = this.headingFromResultSet(rs.getMetaData());
+		Heading headingToInsert = headingFromResultSet(rs.getMetaData());
 
 		// read the resultset (recursively if nested)
 		HashMap<String, Object> fieldValues = new HashMap<String, Object>();
@@ -207,7 +207,7 @@ public class ESUpdateState {
 				fieldValues = new HashMap<String, Object>();
 			}
 			rs.close();
-			rs = queryState.moreResutls();
+			rs = queryState.moreResutls(false);
 		}
 		if(indexReqs.size() > 0) indexCount += this.execute(indexReqs, maxRequestsPerBulk);
 		return indexCount;
@@ -289,8 +289,8 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private  Map<String, Object> buildSource(ResultSet rs) throws SQLException{
-		Heading heading = this.headingFromResultSet(rs.getMetaData());
+	private static Map<String, Object> buildSource(ResultSet rs) throws SQLException{
+		Heading heading = headingFromResultSet(rs.getMetaData());
 		HashMap<String, Object> source = new HashMap<String, Object>();
 		while(rs.next()){
 			for(Column col : heading.columns()){
@@ -320,7 +320,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
-	private Heading headingFromResultSet(ResultSetMetaData rsm) throws SQLException{
+	private static Heading headingFromResultSet(ResultSetMetaData rsm) throws SQLException{
 		Heading heading = new Heading();
 		for(int i=1; i<=rsm.getColumnCount(); i++){
 			String column = rsm.getColumnLabel(i);
@@ -425,7 +425,7 @@ public class ESUpdateState {
 				}
 			}
 			rs.close();
-			rs = queryState.moreResutls();
+			rs = queryState.moreResutls(true);
 		}
 		if(requests.size() > 0) deleteCount = this.execute(requests, maxRequestsPerBulk);
 		return deleteCount;
@@ -685,7 +685,7 @@ public class ESUpdateState {
 					}
 				}
 				rs.close();
-				rs = queryState.moreResutls();
+				rs = queryState.moreResutls(true);
 			}
 			if(indexReqs.size() > 0)  updateCount += this.execute(indexReqs, maxRequestsPerBulk);
 			return updateCount;

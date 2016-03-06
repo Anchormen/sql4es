@@ -7,6 +7,7 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -763,9 +764,9 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			    .prepareState().get().getState()
 			    .getMetaData().getIndices();
 		for(ObjectCursor<String> index : indices.keys()){
-			if(schemaPattern != null && !Pattern.matches(schemaPattern, index.value)) continue;
+			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, index.value)) continue;
 			for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
-				if(tableNamePattern != null && !Pattern.matches(tableNamePattern, type.value)) continue;
+				if(tableNamePattern != null  && tableNamePattern.length() > 0 && !Pattern.matches(tableNamePattern, type.value)) continue;
 				row = result.getNewRow();
 				row.set(2, type.value);
 				row.set(3, "TABLE");
@@ -776,7 +777,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		// add aliases as VIEW on this index
 		ImmutableOpenMap<String, List<AliasMetaData>> aliasMd = client.admin().indices().prepareGetAliases().get().getAliases();
 		for(ObjectCursor<String> key : aliasMd.keys()){
-			if(schemaPattern != null && !Pattern.matches(schemaPattern, key.value)) continue;
+			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
 			for(AliasMetaData amd : aliasMd.get(key.value)){
 				row = result.getNewRow();
 				row.set(1, amd.alias());
@@ -791,7 +792,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		if(result.getNrRows() <= 1){
 			for(ObjectCursor<String> key : aliasMd.keys()){
 				for(AliasMetaData amd : aliasMd.get(key.value)){
-					if(schemaPattern != null && !Pattern.matches(schemaPattern, amd.alias())) continue;
+					if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
 					row = result.getNewRow();
 					row.set(1, key.value);
 					row.set(2, "n/a");
@@ -803,6 +804,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		}
 		
 		result.setTotal(result.getNrRows());
+		//System.out.println("getTables("+catalog+", "+schemaPattern+", "+tableNamePattern+", "+Arrays.toString(types)+") -->\r\n"+result);
 		return result;
 	}
 
