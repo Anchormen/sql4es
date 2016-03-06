@@ -19,7 +19,7 @@ Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
 Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx");
 Statement st = con.createStatement();
 // execute a query on mytype within myidx
-ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE somting >= 42");
+ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE something >= 42");
 ResultSetMetaData rsmd = rs.getrs.getMetaData();
 int nrCols = rsmd.getColumnCount();
 // get other column information like type
@@ -41,7 +41,7 @@ Simply said the sql4es driver translates SQL statements to their Elasticsearch c
 - SELECT: fetches documents (with or without scoring) or aggregations from elasticsearch
   * COUNT, MIN, MAX, SUM, AVG
   * DISTINCT
-  * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR)
+  * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR, IS NULL, IS NOT NULL, NOT [condition])
   * GROUP BY
   * HAVING
   * ORDER BY
@@ -54,6 +54,8 @@ Simply said the sql4es driver translates SQL statements to their Elasticsearch c
 - DELETE FROM (WHERE): removes documents
 - USE: selects an index as the driver's active one (used to interpret queries)
 - EXPLAIN SELECT: returns the Elasticsearch query performed for a SELECT statement
+- Table aliases like SELECT … FROM table1 as T1, table2 t2...
+  - Table aliases are parsed but not used during query execution
 
 **Remarks**
 
@@ -144,6 +146,13 @@ In addition it is possible to execute a regular search with all features support
 SELECT _score, myString FROM mytype WHERE myString = 'hello' OR myString = 'there'
 /* Same as above */
 SELECT _score, myString FROM mytype WHERE myString IN ('hello', 'there')
+/* use of NOT; find all documents which do not contain 'hello' or 'there' */
+SELECT _score, myString FROM mytype WHERE NOT myString IN ('hello', 'there')
+
+/* check for NULL values (missing fields) */
+SELECT myInt FROM mytype WHERE myString NOT NULL
+SELECT myInt FROM mytype WHERE myString IS NULL
+
 /* phrase query */
 SELECT _score, highlight(myString), myString FROM mytype WHERE myString = 'hello there'
 /* wildcard query */
@@ -167,7 +176,7 @@ SELECT * FROM mytype WHERE _id IN ('whatever_id', 'another_ID') /* CORRECT */
 
 Sql4es will request an aggregation whenever it finds a DISTINCT, GROUP BY or aggregation functions (MIN, MAX, SUM, AVG or COUNT) are requested without any normal fields. No search results are returned whenever an aggregation is requested. 
 
-Sql4es supports some basic arithmetic functions: *, /, +, - and % (modulo).  It is also possible to combine different fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch.
+Sql4es supports some basic arithmetic functions: \*, /, +, - and % (modulo).  It is also possible to combine different fields from the resultset within a calculation like AVG(field)/100 and SUM(field)/count(1). Note that within the current implementation these calculations are performed within the driver once data has been fetched from Elasticsearch. It is possible to refer to values in other rows within functions using brackets *[offset]*. For example SUM(volume)/SUM(volume)[-1] will devide the sum of volume column for row X with the value in row X-1. If a value cannot be calculated, for example row number 0 in the example above, it will get value Float.NaN.  
 
 ``` sql
 /* Aggregates on a boolean and returns the sum of an int field in desc order */
@@ -178,8 +187,12 @@ SELECT DISTINCT myBool, sum(myInt) as summy ROM mytype ORDER BY summy DESC
 
 /* Aggregates on a boolean and returns the sum of an int field only if it is larger than 1000 */
 SELECT myBool, sum(myInt) as summy ROM mytype GROUP BY myBool HAVING sum(myInt) > 1000
+
 /* Gets the average of myInt in two different ways... */
 SELECT myBool, sum(myInt)/count(1) as average, avg(myInt) FROM mytype GROUP BY myBool
+
+/* Calculates the percentage of growth of the myInt value acros increasing dates */
+SELECT myDate, sum(myInt)/sum(myInt)[-1]*100 FROM mytype GROUP BY myDate ORDER BY myDate ASC
 
 /* aggregation on all documents without a DISTINCT or GROUP BY */
 SELECT count(*), SUM(myInt) from mytype
@@ -382,29 +395,29 @@ drop table myindex2;
 ```
 
 1. insert two documents into the new type called mytype (the type will be created and mapping will be done dynamically by elasticsearch). Check the DatabaseExplorer option to view the mapping created.
-   
+
 2. show all documents present in mytype
-   
+
 3. execute a search and show the score
-   
+
 4. show the Elasticsearch query performed for the search
-   
+
 5. create a new index and a new type based on the documents in mytype. Note that mytype2 has some different fieldnames than the type it was created of.
-   
+
 6. delete some documents
-   
+
 7. make the newly created index 'myindex2' the active one
-   
+
 8. show all documents within mytype2
-   
+
 9. create a view (alias) for myindex and myindex2 with a filter
-   
+
 10. make the newly created view the active one
-    
+
 11. select all documents present within the view, note that: 
-    
+
     1. not all documents are shown due to the filter on the alias
-       
+
     2. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
-       
+
        ​

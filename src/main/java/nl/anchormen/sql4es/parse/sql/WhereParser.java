@@ -18,6 +18,8 @@ import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.InListExpression;
 import com.facebook.presto.sql.tree.InPredicate;
+import com.facebook.presto.sql.tree.IsNotNullPredicate;
+import com.facebook.presto.sql.tree.IsNullPredicate;
 import com.facebook.presto.sql.tree.LikePredicate;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
@@ -61,8 +63,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			ComparisonExpression compareExp = (ComparisonExpression)node;
 			return this.processComparison(compareExp, state);
 		}else if( node instanceof NotExpression){
-			state.addException("NOT is currently not supported, use '<>' instead");
-			return null;
+			QueryBuilder qb = this.visitExpression(((NotExpression)node).getValue(), state);
+			return QueryBuilders.notQuery(qb);
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -77,7 +79,16 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			return queryForString(field, query);
 		}else if (node instanceof InPredicate){
 			return this.processIn((InPredicate)node, state);
-			
+		} else if (node instanceof IsNullPredicate){
+			String field = getVariableName( ((IsNullPredicate) node).getValue());
+			FieldAndType fat = getFieldAndType(field, state);
+			field = fat.fieldName;
+			return QueryBuilders.missingQuery(field);
+		} else if (node instanceof IsNotNullPredicate){
+			String field = getVariableName( ((IsNotNullPredicate) node).getValue());
+			FieldAndType fat = getFieldAndType(field, state);
+			field = fat.fieldName;
+			return QueryBuilders.existsQuery(field);
 		}else 
 			state.addException("Unable to parse "+node+" ("+node.getClass().getName()+") is not a supported expression");
 		return null;
