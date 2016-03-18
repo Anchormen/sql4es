@@ -19,6 +19,7 @@ import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
+import com.facebook.presto.sql.tree.Relation;
 import com.facebook.presto.sql.tree.SelectItem;
 import com.facebook.presto.sql.tree.SortItem;
 
@@ -26,7 +27,7 @@ import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
-import nl.anchormen.sql4es.model.TableRelation;
+import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.expression.IComparison;
 
@@ -84,7 +85,6 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		this.heading = new Heading();
 		BasicQueryState state = new BasicQueryState(sql, heading, props);
 		int limit = -1;
-		List<TableRelation> relations = new ArrayList<TableRelation>();
 		AggregationBuilder aggregation = null;
 		QueryBuilder query = null;
 		IComparison having = null;
@@ -103,23 +103,9 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		}
 		if(state.hasException()) return new Object[]{state};
 		
-		//req.getHeading().fixAliases(req.originalSql());
+		// get sources to fetch data from
 		if(node.getFrom().isPresent()){
-			relations = node.getFrom().get().accept(relationParser, state);
-			if(state.hasException()) return new Object[]{state};
-			if(relations.size() < 1) {
-				state.addException("Specify atleast one valid table to execute the query on!");
-				return new Object[]{state};
-			}
-			for(int i=0; i<relations.size(); i++){
-				if(relations.get(i).getTable().toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
-					useCache = true;
-					relations.remove(i);
-					i--;
-				}
-			}
-			heading.setTypes(this.typesForColumns(relations));
-			state.setRelations(relations);
+			useCache = getSources(node.getFrom().get(), state, searchReq);
 		}
 		
 		// get columns to fetch (builds the header)
@@ -129,10 +115,9 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		if(state.hasException()) return new Object[]{state};
 		boolean requestScore = heading.hasLabel("_score");
 		
-		
 		// Translate column references and their aliases back to their case sensitive forms
 		heading.reorderAndFixColumns(this.sql, "select.+", ".+from");
-		heading.setTypes(this.typesForColumns(relations));
+		//heading.setTypes(this.typesForColumns(state.getSources()));
 		
 		// create aggregation in case of DISTINCT
 		if(node.getSelect().isDistinct()){
@@ -169,10 +154,45 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 		}
 		if(state.hasException()) return new Object[]{state};
 		
-		buildQuery(searchReq, heading, relations, query, aggregation, having, orderings, limit, useCache, requestScore) ;
+		buildQuery(searchReq, heading, state.getSources(), query, aggregation, having, orderings, limit, useCache, requestScore) ;
 		return new Object[]{heading, having, orderings, limit};
 	}
 
+	/**
+	 * Gets the sources to query from the provided Relation. Parsed relations are put inside the state
+	 * @param relation
+	 * @param state
+	 * @param searchReq
+	 * @return if the set with relations contains the query cache identifier
+	 */
+	private boolean getSources(Relation relation, BasicQueryState state, SearchRequestBuilder searchReq){
+		List<QuerySource> sources = relation.accept(relationParser, state);
+		boolean useCache = false;
+		if(state.hasException()) return false;
+		if(sources.size() < 1) {
+			state.addException("Specify atleast one valid table to execute the query on!");
+			return false;
+		}
+		for(int i=0; i<sources.size(); i++){
+			if(sources.get(i).getSource().toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
+				useCache = true;
+				sources.remove(i);
+				i--;
+			}else if(sources.get(i).isSubQuery()){
+				QuerySource qs = sources.get(i);
+				QueryParser subQueryParser = new QueryParser();
+				try {
+					subQueryParser.parse(qs.getSource(), qs.getQuery(), maxRows, searchReq, props, tableColumnInfo);
+				} catch (SQLException e) {
+					state.addException("Unable to parse sub-query due to: "+e.getMessage());
+				}
+			}
+		}
+		heading.setTypes(this.typesForColumns(sources));
+		state.setRelations(sources);
+		return useCache;
+	}
+	
 	/**
 	 * Builds the actual Elasticsearch request using all the information provided
 	 * @param searchReq
@@ -186,11 +206,11 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param useCache
 	 */
 	@SuppressWarnings("rawtypes")
-	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<TableRelation> relations,
+	private void buildQuery(SearchRequestBuilder searchReq, Heading heading, List<QuerySource> relations,
 			QueryBuilder query, AggregationBuilder aggregation, IComparison having, List<OrderBy> orderings,
 			int limit, boolean useCache, boolean requestScore) {
 		String[] types = new String[relations.size()];
-		for(int i=0; i<relations.size(); i++) types[i] = relations.get(i).getTable(); 
+		for(int i=0; i<relations.size(); i++) types[i] = relations.get(i).getSource(); 
 		SearchRequestBuilder req = searchReq.setTypes(types);
 		
 		// add filters and aggregations
@@ -232,28 +252,24 @@ public class QueryParser extends AstVisitor<Object[], SearchRequestBuilder>{
 	 * @param tables
 	 * @return
 	 */
-	public Map<String, Integer> typesForColumns(List<TableRelation> relations){
+	public Map<String, Integer> typesForColumns(List<QuerySource> relations){
 		HashMap<String, Integer> colType = new HashMap<String, Integer>();
 		colType.put(Heading.ID, Types.VARCHAR);
 		colType.put(Heading.TYPE, Types.VARCHAR);
 		colType.put(Heading.INDEX, Types.VARCHAR);
-		for(TableRelation table : relations){
-			if(!tableColumnInfo.containsKey(table.getTable())) continue;
-			colType.putAll( tableColumnInfo.get(table.getTable()) );
+		for(QuerySource table : relations){
+			if(!tableColumnInfo.containsKey(table.getSource())) continue;
+			colType.putAll( tableColumnInfo.get(table.getSource()) );
 		}
 		return colType;
 	}
 
 	/**
-	 * Gets a property from the connection
-	 * @param name
+	 * Determines the correct number of results to fetch using the maxRows property and optionally
+	 * specified LIMIT within the query.
+	 * @param limit
 	 * @return
 	 */
-	/*
-	public Object getProperty(String name){
-		return this.props.get(name);
-	}
-	*/
 	public int determineLimit(int limit){
 		if(limit <= -1 ) return this.maxRows;
 		if(maxRows <= -1) return limit;

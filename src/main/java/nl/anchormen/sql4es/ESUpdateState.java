@@ -56,7 +56,7 @@ import com.facebook.presto.sql.tree.Values;
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
-import nl.anchormen.sql4es.model.TableRelation;
+import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.parse.sql.RelationParser;
 import nl.anchormen.sql4es.parse.sql.SelectParser;
@@ -183,6 +183,17 @@ public class ESUpdateState {
 					String label = col.getLabel();
 					Object value = rs.getObject(label);
 					if(value == null) continue;
+					Map<String, Object> nested = fieldValues;
+					if(label.contains(".")){
+						String[] parts = label.split("\\.");
+						for(int i=0; i<parts.length-1; i++){
+							String part = parts[i];
+							if(!nested.containsKey(part)) nested.put(part, new HashMap<String, Object>());
+							nested = (Map<String, Object>)nested.get(part);
+						}
+						label = parts[parts.length - 1];
+					}
+					
 					if(value instanceof ResultSet){
 						value = buildSource((ResultSet)value);
 					}else if(value instanceof Array){
@@ -194,7 +205,7 @@ public class ESUpdateState {
 						}
 						value = arrayVal;
 					}
-					fieldValues.put(label, value);
+					nested.put(label, value);
 				}
 				IndexRequestBuilder indexReq = client.prepareIndex().setIndex(index)
 						.setType(type)
@@ -549,9 +560,9 @@ public class ESUpdateState {
 		if(!querySpec.getFrom().isPresent()) throw new SQLException("Add atleast one INDEX to the query to create the view from");
 		
 		QueryState state = new BasicQueryState(sql, new Heading(), props);
-		List<TableRelation> relations = new RelationParser().process(querySpec.getFrom().get(), null);
+		List<QuerySource> relations = new RelationParser().process(querySpec.getFrom().get(), null);
 		String[] indices = new String[relations.size()];
-		for(int i=0; i<relations.size(); i++) indices[i] = relations.get(i).getTable();
+		for(int i=0; i<relations.size(); i++) indices[i] = relations.get(i).getSource();
 		new SelectParser().process(querySpec.getSelect(), state);
 		
 		IndicesAliasesResponse response;

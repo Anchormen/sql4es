@@ -8,7 +8,7 @@ import nl.anchormen.sql4es.ESQueryState;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
-import nl.anchormen.sql4es.model.TableRelation;
+import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.ColumnReference;
 import nl.anchormen.sql4es.model.expression.ICalculation;
@@ -188,13 +188,13 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 		}
 		if(name.contains(".")){
 			String head = name.split("\\.")[0];
-			for(TableRelation tr : state.getRelations()){
+			for(QuerySource tr : state.getSources()){
 				if(tr.getAlias() != null && head.equals(tr.getAlias())){
-					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
-					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
-				}else if (head.equals(tr.getTable())){
-					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getTable(), tr.getAlias());
-					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getTable(), tr.getAlias());
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getSource(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getSource(), tr.getAlias());
+				}else if (head.equals(tr.getSource())){
+					if(op != null) return new Column(name.substring(name.indexOf('.')+1), op).setTable(tr.getSource(), tr.getAlias());
+					return new Column(name.substring(name.indexOf('.')+1)).setTable(tr.getSource(), tr.getAlias());
 				}
 			}
 		}

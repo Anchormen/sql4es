@@ -15,7 +15,7 @@ import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
-import nl.anchormen.sql4es.model.TableRelation;
+import nl.anchormen.sql4es.model.QuerySource;
 
 /**
  * Parses the ORDER BY clause (still a work in progress)
@@ -50,10 +50,10 @@ public class OrderByParser extends AstVisitor<OrderBy, QueryState>{
 		// remove any table reference or alias
 		if(orderKey.contains(".")){
 			String prefix = orderKey.split("\\.")[0];
-			for(TableRelation tr : state.getRelations()){
+			for(QuerySource tr : state.getSources()){
 				if(tr.getAlias() != null){
 					if(prefix.equals(tr.getAlias())) orderKey = orderKey.substring(orderKey.indexOf('.')+1);
-				}else if (tr.getTable() != null && prefix.equals(tr.getTable())) orderKey = orderKey.substring(orderKey.indexOf('.')+1);
+				}else if (tr.getSource() != null && prefix.equals(tr.getSource())) orderKey = orderKey.substring(orderKey.indexOf('.')+1);
 			}
 		}
 		// select column to order on

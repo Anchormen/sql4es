@@ -21,7 +21,7 @@ public class BasicQueryState implements QueryState {
 	private Properties props;
 	private String sql;
 	private SQLException exception = null;
-	private List<TableRelation> relations = new ArrayList<TableRelation>();
+	private List<QuerySource> relations = new ArrayList<QuerySource>();
 
 	public BasicQueryState(String sql, Heading heading, Properties props){
 		this.heading = heading;
@@ -40,11 +40,11 @@ public class BasicQueryState implements QueryState {
 	}
 
 	@Override
-	public List<TableRelation> getRelations(){
+	public List<QuerySource> getSources(){
 		return this.relations ;
 	}
 	
-	public void setRelations(List<TableRelation> relations){
+	public void setRelations(List<QuerySource> relations){
 		this.relations = relations;
 	}
 	

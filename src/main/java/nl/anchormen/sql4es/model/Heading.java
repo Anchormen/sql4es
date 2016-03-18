@@ -50,6 +50,9 @@ public class Heading {
 	 * @param column
 	 */
 	public void add(Column column) {
+		String colName = column.getColumn(); 
+		// remove .* at the end to convert 'field.*' just to 'field' which will be expanded during result parsing
+		if(colName.endsWith(".*")) column.setColumn(colName.substring(0, colName.length()-2));
 		if(column.getColumn().equals("*") && column.getOp() == Operation.NONE) {
 			this.allColumns  = true;
 			String table = column.getTable();

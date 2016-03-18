@@ -2,20 +2,28 @@ package nl.anchormen.sql4es.parse.sql;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeField;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalTime;
 
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression;
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.CurrentTime;
 import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.InListExpression;
 import com.facebook.presto.sql.tree.InPredicate;
 import com.facebook.presto.sql.tree.IsNotNullPredicate;
@@ -27,7 +35,7 @@ import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
-import nl.anchormen.sql4es.model.TableRelation;
+import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.Utils;
 
 import com.facebook.presto.sql.tree.LongLiteral;
@@ -115,8 +123,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		if(state.hasException()) return null;
 		
 		QueryBuilder comparison = null;
-		String[] types = new String[state.getRelations().size()];
-		for(int i=0; i<types.length; i++) types[i] = state.getRelations().get(i).getTable();
+		String[] types = new String[state.getSources().size()];
+		for(int i=0; i<types.length; i++) types[i] = state.getSources().get(i).getSource();
 		if(compareExp.getType() == ComparisonExpression.Type.EQUAL){
 			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(types).ids((String)value);
 			else if(field.equals(Heading.SEARCH)) comparison = QueryBuilders.queryStringQuery((String)value);
@@ -162,8 +170,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 				values.add(value);
 			}
 			if(field.equals(Heading.ID)) {
-				String[] types = new String[state.getRelations().size()];
-				for(int i=0; i<types.length; i++) types[i] = state.getRelations().get(i).getTable();
+				String[] types = new String[state.getSources().size()];
+				for(int i=0; i<types.length; i++) types[i] = state.getSources().get(i).getSource();
 				String[] ids = new String[values.size()];
 				return QueryBuilders.idsQuery(types).addIds(values.toArray(ids));
 			}
@@ -214,7 +222,20 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 				}
 			}
 			return num;
-		} else state.addException("Literal type "+expression.getClass().getSimpleName()+" is not supported");
+		} else if(expression instanceof FunctionCall){
+			FunctionCall fc = (FunctionCall)expression;
+			if(fc.getName().toString().equals("now")) return new Date();
+			else state.addException("Function '"+fc.getName()+"' is not supported");
+		}else if(expression instanceof CurrentTime){
+			CurrentTime ct = (CurrentTime)expression;
+			if(ct.getType() == CurrentTime.Type.DATE) return new LocalDate().toDate();
+			else if(ct.getType() == CurrentTime.Type.TIME) return new Date(new LocalTime(DateTimeZone.UTC).getMillisOfDay());
+			else if(ct.getType() == CurrentTime.Type.TIMESTAMP) return new Date();
+			else if(ct.getType() == CurrentTime.Type.LOCALTIME) return new Date(new LocalTime(DateTimeZone.UTC).getMillisOfDay());
+			else if(ct.getType() == CurrentTime.Type.LOCALTIMESTAMP) return new Date();
+			else state.addException("CurrentTime function '"+ct.getType()+"' is not supported");
+			
+		}else state.addException("Literal type "+expression.getClass().getSimpleName()+" is not supported");
 		return null;
 	}
 	
@@ -249,9 +270,9 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		
 		// check if the requested column has nested type
 		Map<String, Map<String, Integer>> tableColumnInfo = (Map<String, Map<String, Integer>>)state.getProperty(Utils.PROP_TABLE_COLUMN_MAP);
-		for(TableRelation relation : state.getRelations()){
+		for(QuerySource relation : state.getSources()){
 			for(String parentCol : parts){
-				Integer type = tableColumnInfo.get(relation.getTable()).get(parentCol);
+				Integer type = tableColumnInfo.get(relation.getSource()).get(parentCol);
 				if(type != null) return new FieldAndType(properName, type);
 			}
 		}
@@ -262,10 +283,10 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	private String removeOptionalTableReference(String name, QueryState state){
 		if(name.contains(".")){
 			String head = name.split("\\.")[0];
-			for(TableRelation tr : state.getRelations()){
+			for(QuerySource tr : state.getSources()){
 				if(tr.getAlias() != null && head.equals(tr.getAlias())){
 					return name.substring(name.indexOf('.')+1);
-				}else if (head.equals(tr.getTable())){
+				}else if (head.equals(tr.getSource())){
 					return name.substring(name.indexOf('.')+1);
 				}
 			}

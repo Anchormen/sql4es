@@ -115,12 +115,12 @@ public class SearchHitParser {
 	 * @param rs
 	 * @throws SQLException 
 	 */
-	//new Object[]{hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), hit.getHighlightFields()}
 	@SuppressWarnings("unchecked")
 	private void parse(Map<String, ?> source, SearchHit hit, ESResultSet rs, boolean explode, String parent, Map<String, Heading> headMap) throws SQLException{
 		Heading head = rs.getHeading();
 		List<Object> row = rs.getNewRow();
 		if(hit != null) addIdIndexAndType(hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), hit.getHighlightFields(), head, row);
+		if(source == null) return; // just return if source was not stored!
 		for(String key : source.keySet()){
 			String fullKey = parent.length()>0 ? parent+"."+key : key;
 
