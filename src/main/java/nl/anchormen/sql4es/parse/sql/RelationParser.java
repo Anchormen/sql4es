@@ -66,12 +66,12 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			}
 		}else if (node instanceof TableSubquery){
 			TableSubquery ts = (TableSubquery)node;
-			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*where", Pattern.CASE_INSENSITIVE);
+			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*[where|as|having|$]", Pattern.CASE_INSENSITIVE);
 			Matcher m = queryRegex.matcher(state.originalSql());
 			if(m.find()) {
 				relations.add(new QuerySource(m.group(1), ts.getQuery().getQueryBody()));
 			}else state.addException("Unable to parse provided subquery in FROM clause");
-		}else state.addException(node.getClass().getName()+" is not supported ("+node.getClass().getName()+")");
+		}else state.addException("Unable to parse FROM clause, "+node.getClass().getName()+" is not supported");
 		return relations;
 	}
 

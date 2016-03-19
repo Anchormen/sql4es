@@ -12,7 +12,9 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.Aggregation;
+import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.Explain;
 import com.facebook.presto.sql.tree.Query;
@@ -27,6 +29,7 @@ import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.IComparison;
 import nl.anchormen.sql4es.parse.se.SearchAggregationParser;
 import nl.anchormen.sql4es.parse.se.SearchHitParser;
+import nl.anchormen.sql4es.parse.sql.ParseResult;
 import nl.anchormen.sql4es.parse.sql.QueryParser;
 
 /**
@@ -84,11 +87,12 @@ public class ESQueryState{
 		}
 		this.request = client.prepareSearch(indices);
 		Map<String, Map<String, Integer>> esInfo = (Map<String, Map<String, Integer>>)Utils.getObjectProperty(props, Utils.PROP_TABLE_COLUMN_MAP);
-		Object[] info = parser.parse(sql, query, maxRows, request, this.statement.getConnection().getClientInfo(), esInfo);
-		this.heading = (Heading)info[0];
-		if(info[1] != null) having = (IComparison)info[1];
-		if(info[2] != null) orderings = (List<OrderBy>)info[2];
-		this.limit = (int)info[3];
+		ParseResult parseResult =  parser.parse(sql, query, maxRows, this.statement.getConnection().getClientInfo(), esInfo);
+		buildQuery(request, parseResult);
+		this.heading = parseResult.getHeading();
+		having = parseResult.getHaving();
+		orderings = parseResult.getSorts();
+		this.limit = parseResult.getLimit();
 		
 		// add highlighting
 		for(Column column : heading.columns()){
@@ -97,6 +101,50 @@ public class ESQueryState{
 						Utils.getIntProp(props, Utils.PROP_FRAGMENT_NUMBER, 1));
 			}
 		}
+	}
+	
+	/**
+	 * Builds the Elasticsearch query object based on the parsed information from the SQL query
+	 * @param searchReq
+	 * @param info
+	 */
+	private void buildQuery(SearchRequestBuilder searchReq, ParseResult info) {
+		String[] types = new String[info.getSources().size()];
+		for(int i=0; i<info.getSources().size(); i++) types[i] = info.getSources().get(i).getSource(); 
+		SearchRequestBuilder req = searchReq.setTypes(types);
+		
+		// add filters and aggregations
+		if(info.getAggregation() != null){
+			// when aggregating the query must be a query and not a filter
+			if(info.getQuery() != null)	req.setQuery(info.getQuery());
+			req.addAggregation(info.getAggregation());
+			
+		// ordering does not work on aggregations (has to be done in client)
+		}else if(info.getQuery() != null){
+			if(info.getRequestScore()) req.setQuery(info.getQuery()); // use query instead of filter to get a score
+			else req.setPostFilter(info.getQuery());
+			
+			// add order
+			for(OrderBy ob : info.getSorts()){
+				req.addSort(ob.getField(), ob.getOrder());
+			}
+		} else req.setQuery(QueryBuilders.matchAllQuery());
+		
+		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
+		// add limit and determine to use scroll
+		if(info.getAggregation() != null) {
+			req = req.setSize(0);
+		} else if(determineLimit(info.getLimit()) > 0 && determineLimit(info.getLimit())  < fetchSize){
+			req.setSize(determineLimit(info.getLimit()) );
+		} else if (info.getSorts().isEmpty()){ // scrolling does not work well with sort
+			req.setSize(fetchSize); 
+			req.addSort("_doc", SortOrder.ASC);
+			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
+		}
+		
+		// use query cache when this was indicated in FROM clause
+		if(info.getUseCache()) req.setRequestCache(true);
+		req.setTimeout(TimeValue.timeValueMillis(Utils.getIntProp(props, Utils.PROP_QUERY_TIMEOUT_MS, 10000)));
 	}
 	
 	/**
@@ -220,6 +268,18 @@ public class ESQueryState{
 	
 	public ESQueryState copy() throws SQLException{
 		return new ESQueryState(client, statement);
+	}
+	
+	/**
+	 * Determines the correct number of results to fetch using the maxRows property and optionally
+	 * specified LIMIT within the query.
+	 * @param limit
+	 * @return
+	 */
+	public int determineLimit(int limit){
+		if(limit <= -1 ) return this.maxRows;
+		if(maxRows <= -1) return limit;
+		return Math.min(limit, maxRows);
 	}
 	
 	public int getLimit(){

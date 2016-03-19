@@ -24,6 +24,7 @@ import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.SelectItem;
 import com.facebook.presto.sql.tree.SingleColumn;
+import com.facebook.presto.sql.tree.StringLiteral;
 import com.facebook.presto.sql.tree.SubscriptExpression;
 
 /**
@@ -104,9 +105,9 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			Column calcCol = new Column(colName);
 			calcCol.setCalculation(calc);
 			return calcCol;
-		}else {
-			state.addException("Unable to parse type "+node.getClass()+" in Select");
-		}
+		}else if(node instanceof StringLiteral){
+			return createColumn( ((StringLiteral)node).getValue(), null, state, "select.+", ".+from");
+		}else state.addException("Unable to parse type "+node.getClass()+" in Select"); 
 		return null;
 	}
 	

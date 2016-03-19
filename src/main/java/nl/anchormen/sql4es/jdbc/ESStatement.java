@@ -58,7 +58,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public ResultSet executeQuery(String sql) throws SQLException {
-		//System.out.println(sql);
+		//System.out.println("QUERY: ["+sql+"]");
 		if(connection.getSchema() == null) throw new SQLException("No active index set for this driver. Pleas specify an active index or alias by executing 'USE <index/alias>' first");
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
 		com.facebook.presto.sql.tree.Statement statement = parser.createStatement(sql);
@@ -83,6 +83,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
+		//System.out.println("QUERY: ["+sql+"]");
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ").trim();
 		// custom stuff to support UPDATE statements since Presto does not parse it
 		if(sql.toLowerCase().startsWith("update")){
@@ -180,6 +181,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public boolean execute(String sql) throws SQLException {
+		//System.out.println("QUERY: ["+sql+"]");
 		sql = sql.replaceAll("\r", " ").replaceAll("\n", " ");
 		String sqlNorm = sql.trim().toLowerCase();
 		if(sqlNorm.startsWith("select") || sqlNorm.startsWith("explain")) {
