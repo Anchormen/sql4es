@@ -39,7 +39,7 @@ public class GroupParser extends SelectParser {
 		// to find case sensitive group by definitions which ES needs
 		for(Column groupby : groups){
 			if(groupby.getOp() != Operation.NONE){
-				state.addException("Can not use function  '"+groupby.getAggName()+"' as GROUP BY, please use an alias to group by a function");
+				state.addException("Can not use function '"+groupby.getAggName()+"' as GROUP BY, please use an alias to group by a function");
 				return null;
 			}
 		}

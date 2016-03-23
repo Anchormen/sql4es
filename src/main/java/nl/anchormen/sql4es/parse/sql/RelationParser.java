@@ -66,7 +66,7 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			}
 		}else if (node instanceof TableSubquery){
 			TableSubquery ts = (TableSubquery)node;
-			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*[where|as|having|$]", Pattern.CASE_INSENSITIVE);
+			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*(where|as|having|limit|$)", Pattern.CASE_INSENSITIVE);
 			Matcher m = queryRegex.matcher(state.originalSql());
 			if(m.find()) {
 				relations.add(new QuerySource(m.group(1), ts.getQuery().getQueryBody()));

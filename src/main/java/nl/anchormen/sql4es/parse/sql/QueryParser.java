@@ -9,11 +9,10 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.Query;
@@ -24,6 +23,8 @@ import com.facebook.presto.sql.tree.SelectItem;
 import com.facebook.presto.sql.tree.SortItem;
 
 import nl.anchormen.sql4es.model.BasicQueryState;
+import nl.anchormen.sql4es.model.Column;
+import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
 import nl.anchormen.sql4es.model.QuerySource;
@@ -88,6 +89,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		IComparison having = null;
 		List<OrderBy> orderings = new ArrayList<OrderBy>();
 		boolean useCache = false;
+		ParseResult subQuery = null;
 		
 		// check for distinct in combination with group by
 		if(node.getSelect().isDistinct() && !node.getGroupBy().isEmpty()){
@@ -103,7 +105,9 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		
 		// get sources to fetch data from
 		if(node.getFrom().isPresent()){
-			useCache = getSources(node.getFrom().get(), state);
+			SourcesResult sr = getSources(node.getFrom().get(), state);
+			useCache = sr.useCache;
+			subQuery = sr.subQueryInfo;
 		}
 		
 		// get columns to fetch (builds the header)
@@ -152,8 +156,17 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		}
 		if(state.hasException()) return new ParseResult(state.getException());
 		
-		//buildQuery(searchReq, heading, state.getSources(), query, aggregation, having, orderings, limit, useCache, requestScore) ;
-		return new ParseResult(heading, state.getSources(), query, aggregation, having, orderings, limit, useCache, requestScore);
+		ParseResult result = new ParseResult(heading, state.getSources(), query, aggregation, having, orderings, limit, useCache, requestScore);
+		if(subQuery != null)try{
+			if(subQuery.getAggregation() == null && result.getAggregation() == null)
+				result = mergeSelectWithSelect(result, subQuery);
+			else if(subQuery.getAggregation() != null && result.getAggregation() == null)
+				result = mergeSelectWithAgg(result, subQuery);
+			else throw new SQLException("Unable to merge the Sub query with the top query");
+		}catch(SQLException e){
+			return new ParseResult(e);
+		}
+		return result;
 	}
 
 	/**
@@ -163,13 +176,14 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	 * @param searchReq
 	 * @return if the set with relations contains the query cache identifier
 	 */
-	private boolean getSources(Relation relation, BasicQueryState state){
+	private SourcesResult getSources(Relation relation, BasicQueryState state){
 		List<QuerySource> sources = relation.accept(relationParser, state);
 		boolean useCache = false;
-		if(state.hasException()) return false;
+		ParseResult subQueryInfo = null;
+		if(state.hasException()) return new SourcesResult(false, null);
 		if(sources.size() < 1) {
 			state.addException("Specify atleast one valid table to execute the query on!");
-			return false;
+			return new SourcesResult(false, null);
 		}
 		for(int i=0; i<sources.size(); i++){
 			if(sources.get(i).getSource().toLowerCase().equals(props.getProperty(Utils.PROP_QUERY_CACHE_TABLE, "query_cache"))){
@@ -180,7 +194,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 				QuerySource qs = sources.get(i);
 				QueryParser subQueryParser = new QueryParser();
 				try {
-					subQueryParser.parse(qs.getSource(), qs.getQuery(), maxRows, props, tableColumnInfo);
+					subQueryInfo = subQueryParser.parse(qs.getSource(), qs.getQuery(), maxRows, props, tableColumnInfo);
 				} catch (SQLException e) {
 					state.addException("Unable to parse sub-query due to: "+e.getMessage());
 				}
@@ -190,9 +204,71 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		}
 		heading.setTypes(this.typesForColumns(sources));
 		state.setRelations(sources);
-		return useCache;
+		return new SourcesResult(useCache, subQueryInfo);
 	}
 
+	/**
+	 * Merges two nested SELECT queries 'SELECT a as b from (select myfield as a FROM mytype)'
+	 * @param top the top SELECT
+	 * @param nested the nested SELECT
+	 * @return a new ParseResult in which the two selects has been merged
+	 * @throws SQLException in case this function is unable to marge the two queries
+	 */
+	private ParseResult mergeSelectWithSelect(ParseResult top, ParseResult nested) throws SQLException{
+		int limit = Math.min(top.getLimit(), nested.getLimit());
+		if(limit <= 0) limit = Math.max(top.getLimit(), nested.getLimit());
+		List<OrderBy> sorts = nested.getSorts();
+		sorts.addAll(top.getSorts());
+		QueryBuilder query = QueryBuilders.boolQuery().must(top.getQuery()).must(nested.getQuery());
+		boolean score = top.getRequestScore() || nested.getRequestScore();
+		boolean useCache = top.getUseCache() || nested.getUseCache();
+		Heading head = new Heading();
+		if(top.getHeading().hasAllCols()) head = nested.getHeading();
+		else{
+			for(Column col : top.getHeading().columns()){
+				Column col2 = nested.getHeading().getColumnByNameAndOp(col.getColumn(), Operation.NONE);
+				if(col2 == null) col2 = nested.getHeading().getColumnByLabel(col.getAlias());
+				if(col2 == null) throw new SQLException("Unable to determine column '"+col+"' within nested query");
+				head.add(new Column(col2.getColumn()).setAlias(col.getAlias()));
+			}
+		}
+		return new ParseResult(head, nested.getSources(), query, null, null, sorts, limit, useCache, score);
+	}
+	
+	private ParseResult mergeSelectWithAgg(ParseResult top, ParseResult nested) throws SQLException{
+		if(top.getRequestScore()) throw new SQLException("Unable to request a _score on an aggregation");
+		if(!(top.getQuery() instanceof MatchAllQueryBuilder)) throw new SQLException("Unable to combine a WHERE clause with a nested query");
+		int limit = Math.min(top.getLimit(), nested.getLimit());
+		if(limit <= 0) limit = Math.max(top.getLimit(), nested.getLimit());
+		List<OrderBy> sorts = nested.getSorts();
+		sorts.addAll(top.getSorts());
+		boolean useCache = top.getUseCache() || nested.getUseCache();
+		QueryBuilder aggQuery = nested.getQuery();
+		AggregationBuilder<?> agg = nested.getAggregation();
+		IComparison having = nested.getHaving();
+		
+		Heading head = new Heading();
+		if(top.getHeading().hasAllCols()) head = nested.getHeading();
+		else{
+			for(Column col : top.getHeading().columns()){
+				Column col2 = nested.getHeading().getColumnByNameAndOp(col.getColumn(), Operation.NONE);
+				if(col2 == null) col2 = nested.getHeading().getColumnByLabel(col.getAlias());
+				if(col2 == null) throw new SQLException("Unable to determine column '"+col+"' within nested query");
+				nested.getHeading().remove(col2);
+				head.add(new Column(col2.getColumn(), col2.getOp()).setAlias(col.getAlias()));
+			}
+			for(Column col2 : nested.getHeading().columns()){
+				head.add(new Column(col2.getColumn(), col2.getOp())
+						.setAlias(col2.getAlias())
+						.setCalculation(col2.getCalculation()).setSqlType(col2.getSqlType())
+						.setTable(col2.getTable(), col2.getTableAlias()).setVisible(false)
+						);
+			}
+		}
+		head.buildIndex();
+		return new ParseResult(head, nested.getSources(), aggQuery, agg, having, sorts, limit, useCache, false);
+	}
+	
 	/**
 	 * Gets SQL column types for the provided tables as a map from colname to java.sql.Types
 	 * @param tables
@@ -210,4 +286,13 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		return colType;
 	}
 
+	private class SourcesResult {
+		public boolean useCache;
+		public ParseResult subQueryInfo;
+		
+		public SourcesResult(boolean useCache, ParseResult subQueryInfo){
+			this.useCache = useCache;
+			this.subQueryInfo = subQueryInfo;
+		}
+	}
 }

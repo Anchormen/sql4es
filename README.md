@@ -16,7 +16,7 @@ The sql4es driver can be used by adding the jar file, found within the releases 
 ``` java
 // register the driver and get a connection for index 'myidx'
 Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
-Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx");
+Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx?cluster.name=your-cluster-name");
 Statement st = con.createStatement();
 // execute a query on mytype within myidx
 ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE something >= 42");

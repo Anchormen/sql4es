@@ -32,6 +32,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(10, rs.getLong(1));
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		rs = st.executeQuery("select COUNT(1) from "+type);
 		rsm = rs.getMetaData();
@@ -43,6 +44,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(10, rs.getLong(1));
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		rs = st.executeQuery("select max(doubleNum) as maximus from "+type);
 		rsm = rs.getMetaData();
@@ -54,6 +56,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(9, rs.getDouble("maximus"), 0.0001);
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		rs = st.executeQuery("select Min(longNum) from "+type);
 		rsm = rs.getMetaData();
@@ -65,6 +68,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(0, rs.getLong(1));
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		rs = st.executeQuery("select suM(shortNum) from "+type);
 		rsm = rs.getMetaData();
@@ -76,6 +80,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(45, rs.getShort("sum(shortNum)"));
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		rs = st.executeQuery("select AVG(floatNum) from "+type);
 		rsm = rs.getMetaData();
@@ -87,6 +92,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(4.5, rs.getFloat("avg(floatNum)"), 0.001f);
 		}
 		assertEquals(1, count);
+		rs.close();
 		st.close();
 	}
 	
@@ -112,6 +118,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(50, rs.getDouble(5), 1);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) from "+type+" GROUP BY bool, nb");
 		rsm = rs.getMetaData();
@@ -132,7 +139,8 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(50, rs.getDouble(6), 1);
 		}
 		assertEquals(2, count);
-
+		rs.close();
+		
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) "
 				+ "from "+type+" WHERE shortNum >= 50 GROUP BY bool, nb");
 		rsm = rs.getMetaData();
@@ -153,6 +161,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(75, rs.getDouble(6), 1);
 		}
 		assertEquals(2, count);
+		rs.close();
 		st.close();
 	}
 	
@@ -181,6 +190,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(75, rs.getDouble(6), 1);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) "
@@ -203,6 +213,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(55, rs.getDouble(6), 1);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -225,6 +236,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(50, rs.getDouble(6), 0.001);
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -247,6 +259,7 @@ public class AggregationsIT extends Sql4EsBase {
 			assertEquals(50, rs.getDouble(6), 0.001);
 		}
 		assertEquals(1, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*) as c, max(intNum), min(floatNum), avg(doubleNum) "
@@ -265,6 +278,7 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(0, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) "
@@ -283,6 +297,7 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(0, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, max(intNum) as maximus, "
@@ -292,6 +307,7 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(2, count);
+		rs.close();
 		st.close();
 	}
 	
@@ -311,6 +327,7 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -324,6 +341,7 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -337,6 +355,7 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -350,6 +369,7 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		rs.close();
 		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
@@ -363,7 +383,8 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
-
+		rs.close();
+		
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
 				+ "from "+type+" WHERE longNum > 78 GROUP BY bool, nb ORDER BY m DESC");
@@ -376,6 +397,18 @@ public class AggregationsIT extends Sql4EsBase {
 			max = rs.getInt(4);
 		}
 		assertEquals(2, count);
+		rs.close();
+		
+		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum) m, min(floatNum), avg(doubleNum) "
+				+ "from "+type+" GROUP BY bool, nb ORDER BY m DESC LIMIT 2");
+		
+		count = 0;
+		while(rs.next()){
+			count++;
+		}
+		assertEquals(2, count);
+		rs.close();
 		st.close();
 	}
 	

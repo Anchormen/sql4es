@@ -3,6 +3,8 @@ package nl.anchormen.esjdbc;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -58,7 +60,17 @@ public class NestedIT extends ESIntegTestCase{
 	}
 	
 	private void indexDocs(int count) throws IOException{
-		String mapping = new String(Files.readAllBytes(Paths.get("src/test/resources/NestedDocMapping.json")));
+		String mapping = AccessController.doPrivileged(new PrivilegedAction<String>(){
+			@Override
+			public String run() {
+				try {
+					return new String(Files.readAllBytes(Paths.get("src/test/resources/NestedDocMapping.json")));
+				} catch (IOException e) {
+					return null;
+				}
+			}
+		});
+		if(mapping == null) throw new IOException("Unable to read NestedDocMapping.json");
 		client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
 		ObjectMapper mapper = new ObjectMapper();
 		for(int i=0; i<count; i++){

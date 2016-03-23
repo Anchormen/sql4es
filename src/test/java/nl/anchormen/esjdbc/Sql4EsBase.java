@@ -3,13 +3,18 @@ package nl.anchormen.esjdbc;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
+import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.test.ESIntegTestCase;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Sql4EsBase extends ESIntegTestCase {
+
+	private SecurityManager sm;
 
 	/**
 	 * Loads the ESDriver
@@ -18,6 +23,11 @@ public class Sql4EsBase extends ESIntegTestCase {
 	public Sql4EsBase() throws Exception {
 		super();
 		Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
+		this.sm = System.getSecurityManager();
+		if (sm != null) {
+		  // unprivileged code such as scripts do not have SpecialPermission
+		  sm.checkPermission(new SpecialPermission());
+		}		
 	}
 	
 	/**
@@ -30,7 +40,17 @@ public class Sql4EsBase extends ESIntegTestCase {
 	 */
 	protected void createIndexTypeWithDocs(String index, String type, boolean withMapping, int nrDocs) throws IOException{
 		if(withMapping){
-			String mapping = new String(Files.readAllBytes(Paths.get("src/test/resources/TestDocumentMapping.json")));
+			String mapping = AccessController.doPrivileged(new PrivilegedAction<String>(){
+				@Override
+				public String run() {
+					try {
+						return new String(Files.readAllBytes(Paths.get("src/test/resources/TestDocumentMapping.json")));
+					} catch (IOException e) {
+						return null;
+					}
+				}
+			});
+			if(mapping == null) throw new IOException("Unable to read TestDocumentMapping.json");
 			client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
 		}else{
 			createIndex(index);
@@ -41,7 +61,17 @@ public class Sql4EsBase extends ESIntegTestCase {
 	
 	protected void createIndexTypeWithDocs(String index, String type, boolean withMapping, int nrDocs, int history) throws IOException{
 		if(withMapping){
-			String mapping = new String(Files.readAllBytes(Paths.get("src/test/resources/TestDocumentMapping.json")));
+			String mapping = AccessController.doPrivileged(new PrivilegedAction<String>(){
+				@Override
+				public String run() {
+					try {
+						return new String(Files.readAllBytes(Paths.get("src/test/resources/TestDocumentMapping.json")));
+					} catch (IOException e) {
+						return null;
+					}
+				}
+			});
+			if(mapping == null) throw new IOException("Unable to read TestDocumentMapping.json");
 			client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
 		}else{
 			createIndex(index);

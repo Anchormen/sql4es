@@ -136,6 +136,10 @@ public class ESResultSet implements ResultSet {
 		return this.offset;
 	}
 	
+	public void limit(int limit){
+		if(rows.size() > limit) rows = rows.subList(0, limit);
+	}
+	
 	/**
 	 * Removes rows that do not match the provided Having clause
 	 * @param having

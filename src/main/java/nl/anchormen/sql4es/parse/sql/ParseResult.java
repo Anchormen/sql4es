@@ -1,6 +1,7 @@
 package nl.anchormen.sql4es.parse.sql;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.elasticsearch.index.query.QueryBuilder;
@@ -16,15 +17,15 @@ public class ParseResult {
 	private Heading heading;
 	private List<QuerySource> sources;
 	private QueryBuilder query;
-	private AggregationBuilder aggregation;
+	private AggregationBuilder<?> aggregation;
 	private IComparison having;
-	private List<OrderBy> sorts;
+	private List<OrderBy> sorts = new ArrayList<OrderBy>();
 	private int limit = -1;
 	private Boolean useCache = false;
 	private Boolean requestScore = false;
 	private SQLException exception;
 	
-	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AggregationBuilder aggregation,
+	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AggregationBuilder<?> aggregation,
 			IComparison having, List<OrderBy> sorts, Integer limit, Boolean useCache, Boolean requestScore) {
 		super();
 		this.heading = heading;
@@ -32,7 +33,7 @@ public class ParseResult {
 		this.query = query;
 		this.aggregation = aggregation;
 		this.having = having;
-		this.sorts = sorts;
+		if(sorts != null) this.sorts = sorts;
 		this.limit = limit;
 		this.useCache = useCache;
 		this.requestScore = requestScore;
@@ -54,7 +55,7 @@ public class ParseResult {
 		return query;
 	}
 
-	public AggregationBuilder getAggregation() {
+	public AggregationBuilder<?> getAggregation() {
 		return aggregation;
 	}
 

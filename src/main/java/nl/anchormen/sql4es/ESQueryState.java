@@ -213,6 +213,7 @@ public class ESQueryState{
 			if(!orderings.isEmpty()){
 				rs.orderBy(orderings);
 			}
+			if(this.limit > -1) rs.limit(limit);
 			rs.executeComputations();
 			return rs;
 		}else{
