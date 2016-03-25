@@ -83,4 +83,53 @@ public class ParseResult {
 		return exception;
 	}
 
+	public ParseResult setHeading(Heading heading) {
+		this.heading = heading;
+		return this;
+	}
+
+	public ParseResult setSources(List<QuerySource> sources) {
+		this.sources = sources;
+		return this;
+	}
+
+	public ParseResult setQuery(QueryBuilder query) {
+		this.query = query;
+		return this;
+	}
+
+	public ParseResult setAggregation(AggregationBuilder<?> aggregation) {
+		this.aggregation = aggregation;
+		return this;
+	}
+
+	public ParseResult setHaving(IComparison having) {
+		this.having = having;
+		return this;
+	}
+
+	public ParseResult setSorts(List<OrderBy> sorts) {
+		this.sorts = sorts;
+		return this;
+	}
+
+	public ParseResult setLimit(int limit) {
+		this.limit = limit;
+		return this;
+	}
+
+	public ParseResult setUseCache(Boolean useCache) {
+		this.useCache = useCache;
+		return this;
+	}
+
+	public ParseResult setRequestScore(Boolean requestScore) {
+		this.requestScore = requestScore;
+		return this;
+	}
+
+	public void setException(SQLException exception) {
+		this.exception = exception;
+	}
+
 }

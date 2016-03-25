@@ -269,10 +269,10 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		// check if the requested column has nested type
 		Map<String, Map<String, Integer>> tableColumnInfo = (Map<String, Map<String, Integer>>)state.getProperty(Utils.PROP_TABLE_COLUMN_MAP);
 		for(QuerySource relation : state.getSources()){
-			for(String parentCol : parts){
+			for(String parentCol : parts)try{
 				Integer type = tableColumnInfo.get(relation.getSource()).get(parentCol);
 				if(type != null) return new FieldAndType(properName, type);
-			}
+			}catch(Exception e){} // it may happen the column is not yet known in the driver
 		}
 		// in rare instances the type is unknown (added recently?)
 		return new FieldAndType(properName, Types.OTHER);

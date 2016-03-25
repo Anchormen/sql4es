@@ -29,7 +29,10 @@ import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.OrderBy;
 import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.Utils;
+import nl.anchormen.sql4es.model.expression.ColumnReference;
+import nl.anchormen.sql4es.model.expression.ICalculation;
 import nl.anchormen.sql4es.model.expression.IComparison;
+import nl.anchormen.sql4es.model.expression.SimpleCalculation;
 
 /**
  * Interprets the parsed query and build the appropriate ES query (a {@link SearchRequestBuilder} instance). 
@@ -119,7 +122,6 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		
 		// Translate column references and their aliases back to their case sensitive forms
 		heading.reorderAndFixColumns(this.sql, "select.+", ".+from");
-		//heading.setTypes(this.typesForColumns(state.getSources()));
 		
 		// create aggregation in case of DISTINCT
 		if(node.getSelect().isDistinct()){
@@ -162,7 +164,18 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 				result = mergeSelectWithSelect(result, subQuery);
 			else if(subQuery.getAggregation() != null && result.getAggregation() == null)
 				result = mergeSelectWithAgg(result, subQuery);
-			else throw new SQLException("Unable to merge the Sub query with the top query");
+			else if(subQuery.getAggregation() == null && result.getAggregation() != null){
+				result = mergeAggWithSelect(result, subQuery);
+				
+				if(result.getHeading().aggregateOnly()){
+					AggregationBuilder agg = groupParser.buildFilterAggregation(result.getQuery(), result.getHeading());
+					result.setAggregation(agg).setQuery(null);
+				}else{
+					BasicQueryState state2 = new BasicQueryState(sql, result.getHeading(), props);
+					AggregationBuilder agg = groupParser.addDistinctAggregation(state2);
+					result.setAggregation(agg);
+				}
+			}else throw new SQLException("Unable to merge the Sub query with the top query");
 		}catch(SQLException e){
 			return new ParseResult(e);
 		}
@@ -198,8 +211,8 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 				} catch (SQLException e) {
 					state.addException("Unable to parse sub-query due to: "+e.getMessage());
 				}
-				sources.remove(i);
-				i--;
+				//sources.remove(i);
+				//i--;
 			}
 		}
 		heading.setTypes(this.typesForColumns(sources));
@@ -228,13 +241,21 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 			for(Column col : top.getHeading().columns()){
 				Column col2 = nested.getHeading().getColumnByNameAndOp(col.getColumn(), Operation.NONE);
 				if(col2 == null) col2 = nested.getHeading().getColumnByLabel(col.getAlias());
-				if(col2 == null) throw new SQLException("Unable to determine column '"+col+"' within nested query");
-				head.add(new Column(col2.getColumn()).setAlias(col.getAlias()));
+				if(col2 == null) throw new SQLException("Unable to determine column '"+col.getLabel()+"' within nested query");
+				String alias = (col.getAlias() == null ? col.getColumn() : col.getAlias());
+				head.add(new Column(col2.getColumn()).setAlias(alias).setSqlType(col2.getSqlType()));
 			}
 		}
 		return new ParseResult(head, nested.getSources(), query, null, null, sorts, limit, useCache, score);
 	}
 	
+	/**
+	 * Merges a top level SELECT query with its nested AGGREGATION
+	 * @param top
+	 * @param nested
+	 * @return
+	 * @throws SQLException
+	 */
 	private ParseResult mergeSelectWithAgg(ParseResult top, ParseResult nested) throws SQLException{
 		if(top.getRequestScore()) throw new SQLException("Unable to request a _score on an aggregation");
 		if(!(top.getQuery() instanceof MatchAllQueryBuilder)) throw new SQLException("Unable to combine a WHERE clause with a nested query");
@@ -255,18 +276,86 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 				if(col2 == null) col2 = nested.getHeading().getColumnByLabel(col.getAlias());
 				if(col2 == null) throw new SQLException("Unable to determine column '"+col+"' within nested query");
 				nested.getHeading().remove(col2);
-				head.add(new Column(col2.getColumn(), col2.getOp()).setAlias(col.getAlias()));
+				head.add(new Column(col2.getColumn(), col2.getOp()).setAlias(col.getAlias())
+						.setSqlType(col2.getSqlType()));
 			}
 			for(Column col2 : nested.getHeading().columns()){
 				head.add(new Column(col2.getColumn(), col2.getOp())
-						.setAlias(col2.getAlias())
-						.setCalculation(col2.getCalculation()).setSqlType(col2.getSqlType())
-						.setTable(col2.getTable(), col2.getTableAlias()).setVisible(false)
-						);
+					.setAlias(col2.getAlias())
+					.setCalculation(col2.getCalculation()).setSqlType(col2.getSqlType())
+					.setTable(col2.getTable(), col2.getTableAlias()).setVisible(false)
+				);
 			}
 		}
 		head.buildIndex();
 		return new ParseResult(head, nested.getSources(), aggQuery, agg, having, sorts, limit, useCache, false);
+	}
+	
+	/**
+	 * Merges a top level aggregation query with an inner select
+	 * @param result
+	 * @param subQuery
+	 * @return
+	 * @throws SQLException 
+	 */
+	private ParseResult mergeAggWithSelect(ParseResult top, ParseResult nested) throws SQLException {
+		if(nested.getRequestScore()) throw new SQLException("Unable to request a _score on an aggregation");
+		int limit = top.getLimit();
+		List<OrderBy> sorts = top.getSorts();
+		boolean useCache = top.getUseCache() || nested.getUseCache();
+		
+		QueryBuilder query = top.getQuery();
+		if(query instanceof MatchAllQueryBuilder) query = nested.getQuery();
+		else if(!(nested.getQuery() instanceof MatchAllQueryBuilder)) query = QueryBuilders.boolQuery().must(top.getQuery()).must(nested.getQuery());
+		
+		AggregationBuilder<?> agg = top.getAggregation();
+		IComparison having = top.getHaving();
+		Heading head = new Heading();
+		if(nested.getHeading().hasAllCols()){
+			head = top.getHeading();
+		}else{
+			for(Column col : top.getHeading().columns()){
+				if(col.hasCalculation()){
+					translateCalculation(col.getCalculation(), nested.getHeading());
+					head.add(new Column(col.getColumn(), col.getOp()).setAlias(col.getAlias())
+							.setCalculation(col.getCalculation()).setSqlType(Types.FLOAT));
+				}else{
+					Column col2 = nested.getHeading().getColumnByNameAndOp(col.getColumn(), Operation.NONE);
+					if(col2 == null) col2 = nested.getHeading().getColumnByLabel(col.getAlias());
+					if(col2 == null && col.getOp() == Operation.COUNT){
+						head.add(col);
+						continue;
+					}else if(col2 == null) throw new SQLException("Unable to determine column '"+col.getLabel()+"' within nested query");
+					String alias = (col.getAlias() == null ? col.getColumn() : col.getAlias());
+					head.add(new Column(col2.getColumn(), col.getOp()).setAlias(alias).setVisible(col.isVisible())
+							.setSqlType(col2.getSqlType()));
+				}
+			}
+		}
+		head.buildIndex();
+		return new ParseResult(head, nested.getSources(), query, agg, having, sorts, limit, useCache, false);
+	}
+	
+	/**
+	 * Traverses a {@link ICalculation} tree to fix column references pointing to a nested query
+	 * @param calc
+	 * @param top
+	 * @param nested
+	 * @throws SQLException
+	 */
+	private void translateCalculation(ICalculation calc, Heading nested) throws SQLException{
+		if(calc instanceof ColumnReference){
+			Column col = ((ColumnReference)calc).getColumn();
+			Column col2 = nested.getColumnByNameAndOp(col.getColumn(), Operation.NONE);
+			if(col2 == null) col2 = nested.getColumnByLabel(col.getAlias());
+			if(col2 != null){
+				col.setColumn(col2.getColumn());
+			}
+		}else if(calc instanceof SimpleCalculation){
+			SimpleCalculation sc = (SimpleCalculation)calc;
+			translateCalculation(sc.left(), nested);
+			translateCalculation(sc.right(), nested);
+		}
 	}
 	
 	/**
@@ -296,3 +385,4 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		}
 	}
 }
+

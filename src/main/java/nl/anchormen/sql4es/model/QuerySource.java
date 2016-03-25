@@ -31,7 +31,7 @@ public class QuerySource {
 	}
 	
 	public String toString(){
-		return source+(alias == null ? "" : " as "+alias);
+		return source+(alias == null ? "" : " AS "+alias);
 	}
 
 	public QueryBody getQuery() {

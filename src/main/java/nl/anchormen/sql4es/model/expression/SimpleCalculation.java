@@ -21,8 +21,9 @@ public class SimpleCalculation implements ICalculation {
 	}
 
 	@Override
-	public void setSign(Sign sign) {
+	public SimpleCalculation setSign(Sign sign) {
 		this.sign = sign;
+		return this;
 	}
 	
 	@Override
@@ -46,6 +47,14 @@ public class SimpleCalculation implements ICalculation {
 
 	public ICalculation right(){
 		return right;
+	}
+	
+	public ArithmeticBinaryExpression.Type getType(){
+		return type;
+	}
+	
+	public Sign getSign(){
+		return sign;
 	}
 	
 	public String toString(){

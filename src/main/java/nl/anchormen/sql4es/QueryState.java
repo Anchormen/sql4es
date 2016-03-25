@@ -72,4 +72,10 @@ public interface QueryState {
 	 */
 	public List<QuerySource> getSources();
 	
+	public QueryState setKeyValue(String key, Object value);
+	
+	public Object getValue(String key);
+	
+	public String getStringValue(String key);
+	
 }

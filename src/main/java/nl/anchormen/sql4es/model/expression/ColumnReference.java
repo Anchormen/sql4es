@@ -44,8 +44,9 @@ public class ColumnReference implements ICalculation{
 	}
 
 	@Override
-	public void setSign(Sign sign) {
+	public ColumnReference setSign(Sign sign) {
 		this.sign = sign;
+		return this;
 	}
 	
 }

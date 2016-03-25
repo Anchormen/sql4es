@@ -245,8 +245,9 @@ public class Heading {
 	}
 	
 	public static String findOriginal(String originalSql, String target, String prefix, String suffix){
-		//if(target.contains("*")) return target;
-		String pattern = target.replaceAll("\\*","\\\\*").replaceAll("\\(", "\\\\s*\\\\(\\\\s*").replaceAll("\\)", "\\\\s*\\\\)\\\\s*");
+		String pattern = target.replaceAll("\\*","\\\\*").replaceAll("\\(", "\\\\s*\\\\(\\\\s*")
+				.replaceAll("\\)", "\\\\s*\\\\)\\\\s*").replaceAll("\\$", "\\\\\\$");
+		//Matcher.quoteReplacement(target); // does not work for all cases it seems
 		Pattern p = Pattern.compile(prefix+"("+pattern+")"+suffix, Pattern.CASE_INSENSITIVE);
 		Matcher m = p.matcher(originalSql.replaceAll("\"", "")); // replace quotes to fix things like SELECT "table"."field" FROM ...
 		if(m.find()){

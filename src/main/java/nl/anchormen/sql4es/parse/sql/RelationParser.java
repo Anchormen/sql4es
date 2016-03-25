@@ -33,6 +33,7 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			return null;
 		}else if( node instanceof AliasedRelation){
 			AliasedRelation ar = (AliasedRelation)node;
+			state.setKeyValue("table_alias", ar.getAlias());
 			List<QuerySource> relations = ar.getRelation().accept(this, state);
 			for(QuerySource rr : relations) rr.setAlias(ar.getAlias());
 			return relations;
@@ -66,7 +67,8 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			}
 		}else if (node instanceof TableSubquery){
 			TableSubquery ts = (TableSubquery)node;
-			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*(where|as|having|limit|$)", Pattern.CASE_INSENSITIVE);
+			Object alias = state.getValue("table_alias");
+			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*(where|as|having|limit|$"+(alias==null ? "":"|"+alias)+")", Pattern.CASE_INSENSITIVE);
 			Matcher m = queryRegex.matcher(state.originalSql());
 			if(m.find()) {
 				relations.add(new QuerySource(m.group(1), ts.getQuery().getQueryBody()));

@@ -8,6 +8,6 @@ public interface ICalculation {
 
 	public Number evaluate(ESResultSet result, int rowNr);
 	
-	public void setSign(Sign sign);
+	public ICalculation setSign(Sign sign);
 	
 }

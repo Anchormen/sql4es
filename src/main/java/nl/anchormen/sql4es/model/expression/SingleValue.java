@@ -17,8 +17,9 @@ public class SingleValue implements ICalculation{
 	}
 	
 	@Override
-	public void setSign(Sign sign) {
+	public SingleValue setSign(Sign sign) {
 		if(sign == Sign.MINUS) this.value = value.doubleValue() * -1;
+		return this;
 	}
 
 	@Override

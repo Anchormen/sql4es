@@ -107,7 +107,9 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			return calcCol;
 		}else if(node instanceof StringLiteral){
 			return createColumn( ((StringLiteral)node).getValue(), null, state, "select.+", ".+from");
-		}else state.addException("Unable to parse type "+node.getClass()+" in Select"); 
+		}else if(node instanceof LongLiteral){
+			 return createColumn(((LongLiteral)node).getValue()+"", null, state, "select.+", ".+from");
+		}else state.addException("Unable to parse type "+node.getClass()+" in Select");
 		return null;
 	}
 	
@@ -185,7 +187,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	 */
 	public static Column createColumn(String name, Operation op, QueryState state, String prefix, String suffix){
 		if(!name.equals("*")){
-			name = Heading.findOriginal(state.originalSql(), name, prefix, suffix);
+			name = Heading.findOriginal(state.originalSql(), name, prefix, suffix);			
 		}
 		if(name.contains(".")){
 			String head = name.split("\\.")[0];

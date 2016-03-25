@@ -2,6 +2,7 @@ package nl.anchormen.sql4es.model;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
@@ -21,6 +22,7 @@ public class BasicQueryState implements QueryState {
 	private Properties props;
 	private String sql;
 	private SQLException exception = null;
+	private HashMap<String, Object> kvStore = new HashMap<String, Object>();
 	private List<QuerySource> relations = new ArrayList<QuerySource>();
 
 	public BasicQueryState(String sql, Heading heading, Properties props){
@@ -81,6 +83,22 @@ public class BasicQueryState implements QueryState {
 	@Override
 	public Object getProperty(String name) {
 		return this.props.get(name);
+	}
+
+	@Override
+	public QueryState setKeyValue(String key, Object value) {
+		kvStore.put(key, value);
+		return this;
+	}
+
+	@Override
+	public Object getValue(String key) {
+		return kvStore.get(key);
+	}
+
+	@Override
+	public String getStringValue(String key) {
+		return (String)kvStore.get(key);
 	}
 
 }
