@@ -11,7 +11,7 @@ The sql4es driver can be used by adding the jar file, found within the releases 
 - host: the hostname or ip of one of the es hosts (required)
 - port: an optional the port number to use for the transport client (default is 9300)
 - index: the optional index to set active within the driver. Most statements like SELECT, DELETE and INSERT require an active index (also see USE [index/alias] statement below). It is however possible to create new indices, types and aliases without an active index.
-- params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). See the Configuration section of this readme for a description of all parameters.
+- params: an optional set of parameters used to influence the internals of the driver (specify additional hosts, maximum number of documents to fetch in a single request etc). If your clustername is not 'elasticsearch' you should specify the clustername witin the url (see example below). Please see the Configuration section of this readme for a description of all driver specific parameters.
 
 ``` java
 // register the driver and get a connection for index 'myidx'

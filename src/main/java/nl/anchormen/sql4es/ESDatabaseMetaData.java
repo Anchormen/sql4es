@@ -7,7 +7,6 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Types;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -42,12 +41,14 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	private int port;
 	private Client client;
 	private Properties clientInfo;
+	private Connection conn;
 
-	public ESDatabaseMetaData(String host, int port, Client client, Properties clientInfo) {
+	public ESDatabaseMetaData(String host, int port, Client client, Properties clientInfo, Connection conn) {
 		this.host = host;
 		this.port = port;
 		this.client = client;
 		this.clientInfo = clientInfo;
+		this.conn = conn;
 	}
 
 	@Override
@@ -737,7 +738,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
 			throws SQLException {
 		//schemaPattern = index;
-		
+		//System.out.println("TABLES: cat="+catalog+", schemas="+schemaPattern+", tables="+tableNamePattern+", types="+Arrays.toString(types));
 		Heading heading = new Heading();
 		heading.add(new Column("TABLE_CAT"));
 		heading.add(new Column("TABLE_SCHEM"));
@@ -751,60 +752,72 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		heading.add(new Column("REF_GENERATION"));
 		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
 		//if(catalog != null && !catalog.equals(Utils.CATALOG)) return result;
-		boolean lookForTables = false;
-		if(types != null) for(String type : types) if(type.equals("TABLE")) lookForTables = true;
-		if(!lookForTables && types != null) return result;
+		boolean lookForTables = types == null;
+		boolean lookForViews = types == null;
+		if(types != null) for(String type : types) {
+			if(type.equals("TABLE")) lookForTables = true;
+			if(type.equals("VIEW")) lookForViews = true;
+		}
+		if(!lookForTables && !lookForViews) return result;
 		// add query cache as a view to the list. It is not an actual table but can be used as such in FROM clause
-		List<Object> row = result.getNewRow();
-		row.set(2, clientInfo.get(Utils.PROP_QUERY_CACHE_TABLE));
-		row.set(3, "GLOBAL TEMPORARY");
-		result.add(row);
 		
-		ImmutableOpenMap<String, IndexMetaData> indices = client.admin().cluster()
-			    .prepareState().get().getState()
-			    .getMetaData().getIndices();
-		for(ObjectCursor<String> index : indices.keys()){
-			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, index.value)) continue;
-			for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
-				if(tableNamePattern != null  && tableNamePattern.length() > 0 && !Pattern.matches(tableNamePattern, type.value)) continue;
-				row = result.getNewRow();
-				row.set(2, type.value);
-				row.set(3, "TABLE");
+		schemaPattern = cleanPattern(schemaPattern);
+		tableNamePattern = cleanPattern(tableNamePattern);
+		
+		if(lookForTables){
+			if(Pattern.matches(tableNamePattern, (String)clientInfo.get(Utils.PROP_QUERY_CACHE_TABLE))){
+				List<Object> row = result.getNewRow();
+				row.set(2, clientInfo.get(Utils.PROP_QUERY_CACHE_TABLE));
+				row.set(3, "GLOBAL TEMPORARY");
 				result.add(row);
 			}
-		}
-		
-		// add aliases as VIEW on this index
-		ImmutableOpenMap<String, List<AliasMetaData>> aliasMd = client.admin().indices().prepareGetAliases().get().getAliases();
-		for(ObjectCursor<String> key : aliasMd.keys()){
-			if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
-			for(AliasMetaData amd : aliasMd.get(key.value)){
-				row = result.getNewRow();
-				row.set(1, amd.alias());
-				row.set(2, "n/a");
-				row.set(3, "VIEW");
-				row.set(4, "Filter ("+amd.filter() == null ? "NONE" : amd.filter()+")");
-				result.add(row);
-			}
-		}
-		
-		// OR get indexes part of the Alias provided as schema
-		if(result.getNrRows() <= 1){
-			for(ObjectCursor<String> key : aliasMd.keys()){
-				for(AliasMetaData amd : aliasMd.get(key.value)){
-					if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
-					row = result.getNewRow();
-					row.set(1, key.value);
-					row.set(2, "n/a");
-					row.set(3, "VIEW");
-					row.set(4, "Filter ("+amd.filter() == null ? "NONE" : amd.filter()+")");
+			
+			ImmutableOpenMap<String, IndexMetaData> indices = client.admin().cluster()
+				    .prepareState().get().getState()
+				    .getMetaData().getIndices();
+			for(ObjectCursor<String> index : indices.keys()){
+				if(!Pattern.matches(schemaPattern, index.value)) continue;
+				for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
+					if(!Pattern.matches(tableNamePattern, type.value)) continue;
+					List<Object> row = result.getNewRow();
+					row.set(2, type.value);
+					row.set(3, "TABLE");
 					result.add(row);
 				}
 			}
 		}
 		
+		// add aliases as VIEW on this index
+		if(lookForViews){
+			ImmutableOpenMap<String, List<AliasMetaData>> aliasMd = client.admin().indices().prepareGetAliases().get().getAliases();
+			for(ObjectCursor<String> key : aliasMd.keys()){
+				if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
+				for(AliasMetaData amd : aliasMd.get(key.value)){
+					List<Object> row = result.getNewRow();
+					row.set(1, amd.alias());
+					row.set(3, "VIEW");
+					row.set(4, "Filter ("+amd.filter() == null ? "NONE" : amd.filter()+")");
+					result.add(row);
+				}
+			}
+			
+			// OR get indexes part of the Alias provided as schema
+			if(result.getNrRows() <= 1){
+				for(ObjectCursor<String> key : aliasMd.keys()){
+					for(AliasMetaData amd : aliasMd.get(key.value)){
+						if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
+						List<Object> row = result.getNewRow();
+						row.set(1, key.value);
+						row.set(3, "VIEW");
+						row.set(4, "Filter ("+amd.filter() == null ? "NONE" : amd.filter()+")");
+						result.add(row);
+					}
+				}
+			}
+		}
+		
 		result.setTotal(result.getNrRows());
-		//System.out.println("getTables("+catalog+", "+schemaPattern+", "+tableNamePattern+", "+Arrays.toString(types)+") -->\r\n"+result);
+		//System.out.println(result);
 		return result;
 	}
 
@@ -843,6 +856,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 
 	@Override
 	public ResultSet getTableTypes() throws SQLException {
+		//System.out.println("TABLE TYPES");
 		Heading heading = new Heading();
 		heading.add(new Column("TABLE_TYPE"));
 		ESResultSet result = new ESResultSet(heading, 1, heading.getColumnCount());
@@ -852,9 +866,6 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		row = result.getNewRow();
 		row.set(0,  "VIEW");
 		result.add(row);
-		row = result.getNewRow();
-		row.set(0,  "GLOBAL TEMPORARY");
-		result.add(row);
 		return result;
 	}
 
@@ -863,6 +874,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
 			throws SQLException {
 		//schemaPattern = index;
+		//System.out.println("COLUMNS: cat="+catalog+", schemas="+schemaPattern+", tables="+tableNamePattern+", columns="+columnNamePattern);
 		schemaPattern = cleanPattern(schemaPattern);
 		tableNamePattern = cleanPattern(tableNamePattern);
 		columnNamePattern = cleanPattern(columnNamePattern);
@@ -908,7 +920,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					// add _id, _type and _index fields
 					List<Object> row = result.getNewRow();
 					row.set(0, null);
-					row.set(1, "No SQL Table schema available");
+					row.set(1, null);
 					row.set(2, type.value);
 					row.set(3, "_id");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
@@ -920,7 +932,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					
 					row = result.getNewRow();				
 					row.set(0, null);
-					row.set(1, "No SQL Table schema available");
+					row.set(1, null);
 					row.set(2, type.value);
 					row.set(3, "_type");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
@@ -932,7 +944,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					
 					row = result.getNewRow();				
 					row.set(0, null);
-					row.set(1, "No SQL Table schema available");
+					row.set(1, null);
 					row.set(2, type.value);
 					row.set(3, "_index");
 					row.set(4, Heading.getTypeIdForObject(new String())); 
@@ -952,6 +964,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			throw new SQLException("Unable to retrieve table data", e);
 		}
 		result.setTotal(result.getNrRows());
+		//System.out.println(result);
 		return result;
 	}
 
@@ -970,7 +983,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				if(properties.containsKey("properties")){
 				row = result.getNewRow();				
 				row.set(0, null);
-				row.set(1, "No SQL Table schema available");
+				row.set(1, null);
 				row.set(2, esType);
 				row.set(3, colName);
 				if("nested".equals( properties.get("type")) ){
@@ -989,7 +1002,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				row = result.getNewRow();				
 				String type = (String)properties.get("type");
 				row.set(0, null);
-				row.set(1, "No SQL Table schema available");
+				row.set(1, null);
 				row.set(2, esType);
 				row.set(3, colName);
 				row.set(6, 1);
@@ -1202,8 +1215,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 
 	@Override
 	public Connection getConnection() throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		return conn;
 	}
 
 	@Override

@@ -208,7 +208,7 @@ public class ESConnection implements Connection{
 
 	@Override
 	public DatabaseMetaData getMetaData() throws SQLException {
-		return new ESDatabaseMetaData(host, port, client, this.getClientInfo());
+		return new ESDatabaseMetaData(host, port, client, this.getClientInfo(), this);
 	}
 
 	@Override

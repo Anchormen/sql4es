@@ -163,6 +163,7 @@ public class ESUpdateState {
 	 * @return
 	 * @throws SQLException
 	 */
+	@SuppressWarnings("unchecked")
 	private int insertFromSelect(String sql, Insert insert, String index, int maxRequestsPerBulk) throws SQLException {
 		queryState.buildRequest(sql, insert.getQuery().getQueryBody(), index);
 		String[] indexAndType = this.getIndexAndType(insert.getTarget().toString(), sql, "into\\s+", "\\s+select", index);
