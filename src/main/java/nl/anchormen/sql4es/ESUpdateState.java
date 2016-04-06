@@ -568,7 +568,7 @@ public class ESUpdateState {
 		
 		IndicesAliasesResponse response;
 		if(querySpec.getWhere().isPresent()){
-			QueryBuilder query = new WhereParser().process(querySpec.getWhere().get(), state);
+			QueryBuilder query = new WhereParser().process(querySpec.getWhere().get(), state).getQuery();
 			response = client.admin().indices().prepareAliases().addAlias(indices, alias, query).execute().actionGet();
 		}else{
 			response = client.admin().indices().prepareAliases().addAlias(indices, alias).execute().actionGet();

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.joda.time.DateTimeZone;
@@ -34,6 +35,7 @@ import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.QuerySource;
+import nl.anchormen.sql4es.model.QueryWrapper;
 import nl.anchormen.sql4es.model.Utils;
 
 import com.facebook.presto.sql.tree.LongLiteral;
@@ -48,29 +50,54 @@ import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
  * @author cversloot
  *
  */
-public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
+public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
+	
+	public QueryBuilder parse(Expression node, QueryState state){
+		QueryWrapper qw = this.visitExpression(node, state);
+		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery());
+		else return qw.getQuery();
+	}
 	
 	@Override
-	protected QueryBuilder visitExpression(Expression node, QueryState state) {
+	protected QueryWrapper visitExpression(Expression node, QueryState state) {
 		if( node instanceof LogicalBinaryExpression){
 			LogicalBinaryExpression boolExp = (LogicalBinaryExpression)node;
 			BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-			QueryBuilder leftQ = boolExp.getLeft().accept(this, state);
-			QueryBuilder rightQ = boolExp.getRight().accept(this, state);
-			if(boolExp.getType() == Type.AND){
-				bqb.must(leftQ);
-				bqb.must(rightQ);
-			}else if(boolExp.getType() == Type.OR){
-				bqb.should(leftQ);
-				bqb.should(rightQ);
+			QueryWrapper lqWrap = boolExp.getLeft().accept(this, state);
+			QueryWrapper rqWrap = boolExp.getRight().accept(this, state);
+			QueryBuilder lq = lqWrap.getQuery();
+			QueryBuilder rq = rqWrap.getQuery();
+			if(lqWrap.getNestField() != null && lqWrap.getNestField().equals(rqWrap.getNestField())){
+				if(boolExp.getType() == Type.AND){
+					bqb.must(lq);
+					bqb.must(rq);
+				}else if(boolExp.getType() == Type.OR){
+					bqb.should(lq);
+					bqb.should(rq);
+				}
+				return new QueryWrapper(bqb, lqWrap.getNestField());
+			}else{
+				if(boolExp.getType() == Type.AND){
+					if(lqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+					else bqb.must(lq);
+					
+					if(rqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					else bqb.must(rq);
+				}else if(boolExp.getType() == Type.OR){
+					if(lqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+					else bqb.should(lq);
+					
+					if(rqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					else bqb.should(rq);
+				}
 			}
-			return bqb;
+			return new QueryWrapper(bqb);
 		}else if( node instanceof ComparisonExpression){
 			ComparisonExpression compareExp = (ComparisonExpression)node;
 			return this.processComparison(compareExp, state);
 		}else if( node instanceof NotExpression){
-			QueryBuilder qb = this.visitExpression(((NotExpression)node).getValue(), state);
-			return QueryBuilders.notQuery(qb);
+			QueryWrapper qw = this.visitExpression(((NotExpression)node).getValue(), state);
+			return new QueryWrapper(QueryBuilders.notQuery(qw.getQuery()), qw.getNestField());
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -81,20 +108,20 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			}
 			String query = ((StringLiteral)((LikePredicate)node).getPattern()).getValue();
 			if(fat.getFieldType() == Types.REF) 
-				return QueryBuilders.nestedQuery(field.split("\\.")[0], queryForString(field, query));
-			return queryForString(field, query);
+				return new QueryWrapper(queryForString(field, query), field.split("\\.")[0]);
+			return new QueryWrapper(queryForString(field, query));
 		}else if (node instanceof InPredicate){
 			return this.processIn((InPredicate)node, state);
 		} else if (node instanceof IsNullPredicate){
 			String field = getVariableName( ((IsNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
 			field = fat.fieldName;
-			return QueryBuilders.missingQuery(field);
+			return new QueryWrapper(QueryBuilders.missingQuery(field));
 		} else if (node instanceof IsNotNullPredicate){
 			String field = getVariableName( ((IsNotNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
 			field = fat.fieldName;
-			return QueryBuilders.existsQuery(field);
+			return new QueryWrapper(QueryBuilders.existsQuery(field));
 		}else 
 			state.addException("Unable to parse "+node+" ("+node.getClass().getName()+") is not a supported expression");
 		return null;
@@ -107,7 +134,7 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	 * @param state
 	 * @return
 	 */
-	private QueryBuilder processComparison(ComparisonExpression compareExp, QueryState state) {
+	private QueryWrapper processComparison(ComparisonExpression compareExp, QueryState state) {
 		String field = getVariableName(compareExp.getLeft());
 		FieldAndType fat = getFieldAndType(field, state);
 		field = fat.getFieldName();
@@ -144,8 +171,8 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 			comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(field, value));
 		};
 		if(fat.getFieldType() == Types.REF) 
-			return QueryBuilders.nestedQuery(field.split("\\.")[0], comparison);
-		return comparison;
+			return new QueryWrapper( comparison, field.split("\\.")[0]);
+		return new QueryWrapper(comparison);
 	}
 
 	/**
@@ -154,7 +181,7 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 	 * @param state
 	 * @return
 	 */
-	private QueryBuilder processIn(InPredicate node, QueryState state) {
+	private QueryWrapper processIn(InPredicate node, QueryState state) {
 		String field = getVariableName(node.getValue());
 		FieldAndType fat = getFieldAndType(field, state);
 		field = fat.getFieldName();
@@ -171,11 +198,11 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 				String[] types = new String[state.getSources().size()];
 				for(int i=0; i<types.length; i++) types[i] = state.getSources().get(i).getSource();
 				String[] ids = new String[values.size()];
-				return QueryBuilders.idsQuery(types).addIds(values.toArray(ids));
+				return new QueryWrapper(QueryBuilders.idsQuery(types).addIds(values.toArray(ids)));
 			}
 			if(fat.getFieldType() == Types.REF) 
-				return QueryBuilders.nestedQuery(field.split("\\.")[0], QueryBuilders.termsQuery(field, values));
-			return QueryBuilders.termsQuery(field, values);
+				return new QueryWrapper(QueryBuilders.termsQuery(field, values), field.split("\\.")[0]);
+			return new QueryWrapper(QueryBuilders.termsQuery(field, values));
 		}else {
 			state.addException("SELECT ... IN can only be used with a list of values!");
 			return null;
@@ -278,6 +305,13 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		return new FieldAndType(properName, Types.OTHER);
 	}
 	
+	/**
+	 * Removes any field references which have an index prefix such as index.field1.field2 which will become
+	 * field1.field2
+	 * @param name
+	 * @param state
+	 * @return
+	 */
 	private String removeOptionalTableReference(String name, QueryState state){
 		if(name.contains(".")){
 			String head = name.split("\\.")[0];
@@ -309,6 +343,6 @@ public class WhereParser extends AstVisitor<QueryBuilder, QueryState>{
 		public int getFieldType() {
 			return fieldType;
 		}
-		
 	}
+	
 }

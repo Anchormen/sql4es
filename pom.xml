@@ -89,8 +89,8 @@
 				<version>2.3.2</version>
 				<configuration>
 					<compilerArguments>
-						<source>1.7</source>
-						<target>1.7</target>
+						<source>1.8</source>
+						<target>1.8</target>
 						<encoding>UTF-8</encoding>
 					</compilerArguments>
 				</configuration>

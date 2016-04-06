@@ -131,11 +131,12 @@ public class ESQueryState{
 		} else req.setQuery(QueryBuilders.matchAllQuery());
 		
 		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
+		int limit = determineLimit(info.getLimit());
 		// add limit and determine to use scroll
 		if(info.getAggregation() != null) {
 			req = req.setSize(0);
-		} else if(determineLimit(info.getLimit()) > 0 && determineLimit(info.getLimit())  < fetchSize){
-			req.setSize(determineLimit(info.getLimit()) );
+		} else if(limit > 0 && limit < fetchSize){
+			req.setSize(limit);
 		} else if (info.getSorts().isEmpty()){ // scrolling does not work well with sort
 			req.setSize(fetchSize); 
 			req.addSort("_doc", SortOrder.ASC);

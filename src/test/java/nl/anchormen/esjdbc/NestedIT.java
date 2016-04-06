@@ -55,6 +55,35 @@ public class NestedIT extends ESIntegTestCase{
 		while(rs.next()) count++;
 		assertEquals(2, count);
 		rs.close();
+		
+		rs = st.executeQuery("SELECT nestedDoc.text FROM "+type+" WHERE nestedDoc.intNum > 5 AND nestedDoc.text = 'NestedDoc number 5'");
+		rsm = rs.getMetaData();
+		assertEquals(1, rsm.getColumnCount());
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(0, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT intNum FROM "+type+" WHERE nestedDoc.intNum > 5 AND nestedDoc.text = 'NestedDoc number 7'");
+		rsm = rs.getMetaData();
+		assertEquals(1, rsm.getColumnCount());
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(2, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT * FROM "+type+" WHERE nestedDoc.intNum < 3 OR nestedDoc.text = 'NestedDoc number 6'");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(8, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT * FROM "+type+" WHERE nestedDoc.intNum < 3 OR (nestedDoc.text = 'NestedDoc number 6' AND intNum = 5)");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(6, count);
+		rs.close();
+		
 		st.close();
 		
 	}

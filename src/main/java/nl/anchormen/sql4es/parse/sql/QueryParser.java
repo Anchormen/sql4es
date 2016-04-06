@@ -131,7 +131,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		// add a Query
 		query = QueryBuilders.matchAllQuery();
 		if(node.getWhere().isPresent()){
-			query = node.getWhere().get().accept(whereParser, state);
+			query = whereParser.parse(node.getWhere().get(), state);
 		}
 		if(state.hasException()) return new ParseResult(state.getException());
 		
