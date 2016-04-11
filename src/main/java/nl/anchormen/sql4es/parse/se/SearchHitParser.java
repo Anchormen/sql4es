@@ -217,6 +217,7 @@ public class SearchHitParser {
 					}
 				}
 				nested.close();
+				row.set(ri, null);
 			}
 		}
 		

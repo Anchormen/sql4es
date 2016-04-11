@@ -32,14 +32,20 @@ public class NestedIT extends ESIntegTestCase{
 	
 	@Test
 	public void testNestedType() throws Exception{
-		indexDocs(10);
+		indexDocs(10, 1);
 		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		ResultSet rs = st.executeQuery("SELECT * FROM "+type+" WHERE intNum > 5");
 		ResultSetMetaData rsm = rs.getMetaData();
-		assertEquals(8, rsm.getColumnCount());
+		assertEquals(9, rsm.getColumnCount());
 		int count = 0;
 		while(rs.next()) count++;
 		assertEquals(8, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT * FROM "+type +" WHERE _id = 'doc_8'");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(2, count);
 		rs.close();
 		
 		rs = st.executeQuery("SELECT * FROM "+type+" WHERE nestedDoc.intNum > 5");
@@ -88,7 +94,48 @@ public class NestedIT extends ESIntegTestCase{
 		
 	}
 	
-	private void indexDocs(int count) throws IOException{
+	@Test
+	public void testInnerNestedType() throws Exception{
+		indexDocs(5, 2);
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
+		ResultSet rs = st.executeQuery("SELECT * FROM "+type);
+		ResultSetMetaData rsm = rs.getMetaData();
+		assertEquals(10, rsm.getColumnCount());
+		int count = 0;
+		while(rs.next()) count++;
+		assertEquals(20, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT * FROM "+type +" WHERE _id = 'doc_2'");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(4, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT intNum, nestedDoc FROM "+type +" WHERE intNum >= 3");
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(8, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT nestedDoc.nestedDoc FROM "+type +" WHERE intNum = 0");
+		assertEquals(3, rs.getMetaData().getColumnCount());
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(4, count);
+		rs.close();
+		
+		rs = st.executeQuery("SELECT nestedDoc.nestedDoc FROM "+type +" WHERE intNum = 0 AND nestedDoc.intNum = 1");
+		// result is one top level documents with 4(!) nested results which are exploded
+		count = 0;
+		while(rs.next()) count++;
+		assertEquals(4, count);
+		rs.close();
+		
+		st.close();
+	}
+	
+	private void indexDocs(int count, int depth) throws IOException{
 		String mapping = AccessController.doPrivileged(new PrivilegedAction<String>(){
 			@Override
 			public String run() {
@@ -103,7 +150,7 @@ public class NestedIT extends ESIntegTestCase{
 		client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
 		ObjectMapper mapper = new ObjectMapper();
 		for(int i=0; i<count; i++){
-			index(index, type, "doc_"+i, mapper.writeValueAsString(new NestedDoc(i, 1)));
+			index(index, type, "doc_"+i, mapper.writeValueAsString(new NestedDoc(i, depth)));
 		}
 		flush();
 	}
@@ -119,9 +166,9 @@ public class NestedIT extends ESIntegTestCase{
 			this.intNum = i;
 			this.text = "NestedDoc number "+i;
 			this.nestedDoc = new ArrayList<NestedDoc>();
-			if(depth < 2){
-				nestedDoc.add(new NestedDoc(i+1, depth+1));
-				nestedDoc.add(new NestedDoc(i+2, depth+1));
+			if(depth > 0){
+				nestedDoc.add(new NestedDoc(i+1, depth-1));
+				nestedDoc.add(new NestedDoc(i+2, depth-1));
 			}
 		}
 
