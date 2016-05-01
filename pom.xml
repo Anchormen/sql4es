@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.anchormen</groupId>
 	<artifactId>sql4es</artifactId>
-	<version>0.8.2.2</version>
+	<version>0.8.2.3</version>
 	<packaging>jar</packaging>
 	<name>sql-4-elasticsearch</name>
 	<url>https://github.com/Anchormen/sql4es</url>
@@ -26,9 +26,22 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<elasticsearch.version>2.2.1</elasticsearch.version>
-		<lucene.version>5.4.1</lucene.version>
+		<elasticsearch.version>2.3.2</elasticsearch.version>
+		<lucene.version>5.5.0</lucene.version>
 	</properties>
+
+	<repositories>
+      <repository>
+         <id>elasticsearch-releases</id>
+         <url>https://maven.elasticsearch.org/releases</url>
+         <releases>
+            <enabled>true</enabled>
+         </releases>
+         <snapshots>
+            <enabled>false</enabled>
+         </snapshots>
+      </repository>
+   </repositories>
 
 	<dependencies>
 		<dependency>
@@ -41,6 +54,11 @@
 			<artifactId>elasticsearch</artifactId>
 			<version>${elasticsearch.version}</version>
 		</dependency>
+		 <dependency>
+	         <groupId>org.elasticsearch.plugin</groupId>
+	         <artifactId>shield</artifactId>
+	         <version>${elasticsearch.version}</version>
+     	 </dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
