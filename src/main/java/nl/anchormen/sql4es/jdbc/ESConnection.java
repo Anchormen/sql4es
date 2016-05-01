@@ -31,6 +31,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.shield.ShieldPlugin;
 import org.elasticsearch.test.ESIntegTestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,10 +97,16 @@ public class ESConnection implements Connection{
 			for(Object key : this.props.keySet()){
 				settingsBuilder.put(key, this.props.get(key));
 			}
-			Settings settings = settingsBuilder.build();
-			TransportClient client = TransportClient.builder().settings(settings).build()
-				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+			if(props.containsKey("cluster.name")){
+				settingsBuilder.put("request.headers.X-Found-Cluster", props.get("cluster.name"));
+			}
+			if(props.containsKey("ssl")){
+				settingsBuilder.put("shield.transport.ssl", true);
+			}
 			
+			Settings settings = settingsBuilder.build();
+			TransportClient client = TransportClient.builder().settings(settings).addPlugin(ShieldPlugin.class).build()
+				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
 			
 			// add additional hosts if set in URL query part
 			if(this.props.containsKey("es.hosts"))
