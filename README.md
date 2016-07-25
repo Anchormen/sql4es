@@ -20,10 +20,10 @@ Connection con = DriverManager.getConnection("jdbc:sql4es://localhost:9300/myidx
 Statement st = con.createStatement();
 // execute a query on mytype within myidx
 ResultSet rs = st.executeQuery("SELECT * FROM mytype WHERE something >= 42");
-ResultSetMetaData rsmd = rs.getrs.getMetaData();
+ResultSetMetaData rsmd = rs.getMetaData();
 int nrCols = rsmd.getColumnCount();
 // get other column information like type
-while(rs.next){
+while(rs.next()){
 	for(int i=1; i<=nrCols; i++){
   		System.out.println(rs.getObject(i));
 	}
