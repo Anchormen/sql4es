@@ -16,6 +16,7 @@ import org.joda.time.LocalTime;
 
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression;
 import com.facebook.presto.sql.tree.AstVisitor;
+import com.facebook.presto.sql.tree.BetweenPredicate;
 import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
@@ -54,6 +55,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 	
 	public QueryBuilder parse(Expression node, QueryState state){
 		QueryWrapper qw = this.visitExpression(node, state);
+		if(qw == null) return null;
 		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery());
 		else return qw.getQuery();
 	}
@@ -122,6 +124,12 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 			FieldAndType fat = getFieldAndType(field, state);
 			field = fat.fieldName;
 			return new QueryWrapper(QueryBuilders.existsQuery(field));
+		}else if (node instanceof BetweenPredicate){
+			BetweenPredicate bp = (BetweenPredicate)node;
+			String field = getFieldAndType(getVariableName( bp.getValue()), state).getFieldName();
+			Object min = getLiteralValue(bp.getMin(), state);
+			Object max = getLiteralValue(bp.getMax(), state);
+			return new QueryWrapper(QueryBuilders.rangeQuery(field).from(min).to(max));
 		}else 
 			state.addException("Unable to parse "+node+" ("+node.getClass().getName()+") is not a supported expression");
 		return null;

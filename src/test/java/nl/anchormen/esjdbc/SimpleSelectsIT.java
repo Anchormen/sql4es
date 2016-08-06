@@ -152,9 +152,43 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(5, count);
+
+		// multi range BETWEEN
+		rs = st.executeQuery("select _id, floatNum, text from "+type+" where shortNum between 4 AND 8");
+		rsm = rs.getMetaData();
+		assertEquals(3, rsm.getColumnCount());
+		assertEquals(Types.FLOAT, rsm.getColumnType(2));
+		
+		count = 0;
+		while(rs.next()){
+			assert(rs.getFloat("floatNum") > 3 && rs.getFloat(2) <= 8);
+			count++;
+		}
+		assertEquals(5, count);
+		
+		rs = st.executeQuery("select floatNum from "+type+" where intNum NOT BETWEEN 3 AND 8");
+		rsm = rs.getMetaData();
+		count = 0;
+		while(rs.next()){
+			assert(rs.getFloat("floatNum") < 3 || rs.getFloat(1) > 8);
+			count++;
+		}
+		assertEquals(4, count);
 		
 		// date range
 		rs = st.executeQuery("select _id, date, text from "+type+" where date > '2016-03-10' AND date < '2016-07-31'");
+		rsm = rs.getMetaData();
+		assertEquals(3, rsm.getColumnCount());
+		assertEquals(Types.DATE, rsm.getColumnType(2));
+		
+		count = 0;
+		while(rs.next()){
+			count++;
+		}
+		assertEquals(4, count);
+
+		// date range BETWEEN
+		rs = st.executeQuery("select _id, date, text from "+type+" where date between '2016-03-10' AND '2016-07-31'");
 		rsm = rs.getMetaData();
 		assertEquals(3, rsm.getColumnCount());
 		assertEquals(Types.DATE, rsm.getColumnType(2));
