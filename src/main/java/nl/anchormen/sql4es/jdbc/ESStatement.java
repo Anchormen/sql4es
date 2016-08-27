@@ -187,7 +187,7 @@ public class ESStatement implements Statement {
 		if(sqlNorm.startsWith("select") || sqlNorm.startsWith("explain")) {
 			this.result = this.executeQuery(sql);
 			return result != null;
-		}else if(sqlNorm.startsWith("insert") || sqlNorm.startsWith("delete")
+		}else if(sqlNorm.startsWith("insert") || sqlNorm.startsWith("delete") || sqlNorm.startsWith("update")
 				|| sqlNorm.startsWith("create") || sqlNorm.startsWith("use") ||
 				sqlNorm.startsWith("drop")) {
 			this.executeUpdate(sql);
