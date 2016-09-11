@@ -235,7 +235,7 @@ public class ESResultSet implements ResultSet {
 				case Types.BIT : return (Boolean)value; 
 				case Types.BOOLEAN : return (Boolean)value; 
 				case Types.CHAR : return Boolean.parseBoolean(""+((char)value));
-				case Types.VARCHAR : return Boolean.parseBoolean((String)value);
+				case Types.VARCHAR : return Boolean.parseBoolean(value.toString());
 				default : return false;
 			}
 		}catch(Exception cce){
@@ -346,6 +346,8 @@ public class ESResultSet implements ResultSet {
 		int type = heading.getColumn(heading.getIndexForColumn(columnIndex)).getSqlType();
 		if(type == Types.DATE){
 			if(value instanceof String) return new Date(getTimeFromString((String)value));
+			if(value instanceof Long) return new Date((Long)value);
+			if(value instanceof Double) return new Date(((Double)value).longValue());
 			return new Date(((java.util.Date)value).getTime());
 		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Date but is "+value.getClass().getSimpleName());
 	}
