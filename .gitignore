@@ -1,6 +1,10 @@
 #mac
 .DS_Store
 
+#intelliJ
+.idea
+*.iml
+
 #Eclipse
 .metadata
 bin/
