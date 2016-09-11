@@ -106,7 +106,7 @@ public class ESStatement implements Statement {
 			return updateState.execute(sql, (CreateView)statement, connection.getSchema());
 		}else if(statement instanceof Use){
 			connection.setSchema( ((Use)statement).getSchema());
-			connection.getTypeMap(); // updates the type mappings found in properties
+			//connection.getTypeMap(); // updates the type mappings found in properties
 			return 0;
 		}else if(statement instanceof DropTable){
 			return updateState.execute(sql, (DropTable)statement);

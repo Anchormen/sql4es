@@ -275,7 +275,7 @@ public class ESConnection implements Connection{
 
 	@Override
 	public Map<String, Class<?>> getTypeMap() throws SQLException {
-		ResultSet rs = getMetaData().getColumns(null, null, null, null);
+		ResultSet rs = getMetaData().getColumns(null, index, null, null);
 		Map<String, Map<String, Integer>> tableColumnInfo = new HashMap<String, Map<String, Integer>>();;
 		while(rs.next()){
 			String table = rs.getString(3);
@@ -461,6 +461,7 @@ public class ESConnection implements Connection{
 		boolean indexExists = client.admin().indices().exists(new IndicesExistsRequest(schema)).actionGet().isExists();
 		if(!indexExists) throw new SQLException("Index '"+schema+"' does not exist");
 		this.index = schema;
+		getTypeMap(); // update the type mappings for the new index which is put within the properties object
 	}
 
 	@Override

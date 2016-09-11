@@ -62,7 +62,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	 * @param queryBody the Query parsed from the sql
 	 * @param searchReq the request to build
 	 * @param props a set of properties to use in certain cases
-	 * @param tableColumnInfo mapping from available tables to columns and their typesd
+	 * @param tableColumnInfo mapping from available tables to columns and their types
 	 * @return an array containing [ {@link Heading}, {@link IComparison} having, List&lt;{@link OrderBy}&gt; orderings, Integer limit]
 	 * @throws SQLException
 	 */
@@ -359,7 +359,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	}
 	
 	/**
-	 * Gets SQL column types for the provided tables as a map from colname to java.sql.Types
+	 * Gets SQL column types for the provided tables as a map from column name to java.sql.Types
 	 * @param tables
 	 * @return
 	 */
