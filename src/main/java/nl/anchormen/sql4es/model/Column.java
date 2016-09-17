@@ -77,7 +77,7 @@ public class Column implements Comparable<Column>{
 	}
 	
 	public String toString(){
-		return ("col: "+columnName+", fullN: "+getFullName()+" as alias:"+getLabel() +" vis: "+isVisible+" index: "+index);
+		return ("col: "+columnName+", fullN: "+getFullName()+" as alias:"+getLabel() +" vis: "+isVisible+" index: "+index+" type: "+sqlType);
 	}
 
 	/**

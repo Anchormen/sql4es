@@ -360,7 +360,7 @@ public class ESResultSet implements ResultSet {
 		if(type == Types.DATE){
 			if(value instanceof String) return new Time(getTimeFromString((String)value));
 			return new Time(((java.util.Date)value).getTime());
-		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Date but is "+value.getClass().getSimpleName());
+		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Time but is "+value.getClass().getSimpleName());
 	}
 
 	@Override
@@ -371,7 +371,7 @@ public class ESResultSet implements ResultSet {
 		if(type == Types.DATE){
 			if(value instanceof String) return new Timestamp(getTimeFromString((String)value));
 			return new Timestamp(((java.util.Date)value).getTime());
-		}else throw new SQLException("Value in column '"+columnIndex+"' is not a date but is "+value.getClass().getSimpleName());
+		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Timestamp but is "+value.getClass().getSimpleName());
 	}
 
 	@Override

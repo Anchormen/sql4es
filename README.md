@@ -1,6 +1,6 @@
 ### sql4es: JDBC driver for Elasticsearch
 
-Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for Elasticsearch 2.X implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. As of version 0.8.2.3 the driver supports Shield allowing the use of credentials and SSL.
+Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for **Elasticsearch 2.0 - 2.4** implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. As of version 0.8.2.3 the driver supports Shield allowing the use of credentials and SSL.
 
 ![SQLWorkbenchJ screenshot with examples](release/workbench_examples.png)
 
@@ -430,8 +430,8 @@ drop table myindex2;
 
 11. select all documents present within the view, note that: 
 
-    1. not all documents are shown due to the filter on the alias
+12. not all documents are shown due to the filter on the alias
 
-    2. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
+   2. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
 
-       ​
+      ​
