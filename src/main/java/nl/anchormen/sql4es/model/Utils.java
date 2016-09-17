@@ -90,6 +90,7 @@ public class Utils {
 	 */
 	public static boolean getBooleanProp(Properties props, String name, boolean def){
 		if(!props.containsKey(name)) return def;
+		if(props.get(name).toString().length() < 3) return true;
 		try {
 			return Boolean.parseBoolean( props.getProperty(name) );
 		} catch (Exception e) {

@@ -352,7 +352,8 @@ The update is executed in two steps. First the _id's of all documents matching t
 It is possible to set parameters through the provided url. All parameters are exposed to elastic search as well which means that is is possible to set Client parameters, see [elasticsearch docs](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/configuration.html). The following driver specific parameters can be set:
 
 - es.hosts: a comma separated list with additional hosts with optional ports in the format host1(:port1), host2(:port2) … The default port 9300 is taken when no port is specified. 
-- fetch.size (int default 2500): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
+- fetch.size (int default 10000): maximum number of results to fetch in a single request (10000 is elasticsearch's maximum). Can be lowered to avoid memory issues when documents fetched are very large.
+- results.split (default: false): setting this will split the entire result into multiple ResultSet objects, each with maximal *fetch.size* number of records. The next ResultSet can be fetched using Statement.getMoreResults(). The default is *false* and the driver will put all results within a single ResultSet. This setting should be used when the client has insufficient memory to hold all the results within a single ResultSet.
 - scroll.timeout.sec (int, default 10): the time a scroll id remains valid and 'getMoreResults()' can be called. Should be increased or decreased depending on the scenario at hand.
 - query.timeout.ms (int, default 10000): the timeout set on a query. Can be altered depending on the use case.
 - default.row.length (int, default 250): the initial number of columns created for results. Increase this property only when results do not fit (typically indicated by an array index out of bounds exception) triggered when search results are parsed.
@@ -432,6 +433,6 @@ drop table myindex2;
 
 12. not all documents are shown due to the filter on the alias
 
-   2. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
+13. some of the fields are empty because the two types queried the empty fields because the two types have a couple of different fields (myDate, myLong and myLong10)
 
-      ​
+     ​

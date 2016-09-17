@@ -137,10 +137,14 @@ public class ESQueryState{
 			req = req.setSize(0);
 		} else if(limit > 0 && limit < fetchSize){
 			req.setSize(limit);
-		} else if (info.getSorts().isEmpty()){ // scrolling does not work well with sort
-			req.setSize(fetchSize); 
-			req.addSort("_doc", SortOrder.ASC);
+		} else if (Utils.getBooleanProp(props, "results.split", false)){
+			req.setSize(fetchSize);
 			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
+			if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
+		}else{
+			req.setSize(limit);
+			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
+			if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
 		}
 		
 		// use query cache when this was indicated in FROM clause
@@ -235,6 +239,7 @@ public class ESQueryState{
 					.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
 					.execute().actionGet();
 			ESResultSet rs = convertResponse(useLateral);
+			rs.setOffset(result.getOffset() + result.getNrRows());
 			if(rs.getNrRows() == 0) return null;
 			result = rs;
 			return result;

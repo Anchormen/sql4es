@@ -1376,7 +1376,7 @@ public class ESResultSet implements ResultSet {
 		
 	}
 
-	public ESResultSet setOffset(int offset) {
+	public ESResultSet setOffset(long offset) {
 		this.offset = offset;
 		return this;
 	}
