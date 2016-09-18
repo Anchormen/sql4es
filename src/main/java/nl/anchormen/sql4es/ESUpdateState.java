@@ -219,7 +219,7 @@ public class ESUpdateState {
 				fieldValues = new HashMap<String, Object>();
 			}
 			rs.close();
-			rs = queryState.moreResutls(false);
+			rs = queryState.moreResults(false);
 		}
 		if(indexReqs.size() > 0) indexCount += this.execute(indexReqs, maxRequestsPerBulk);
 		return indexCount;
@@ -437,7 +437,7 @@ public class ESUpdateState {
 				}
 			}
 			rs.close();
-			rs = queryState.moreResutls(true);
+			rs = queryState.moreResults(true);
 		}
 		if(requests.size() > 0) deleteCount = this.execute(requests, maxRequestsPerBulk);
 		return deleteCount;
@@ -697,7 +697,7 @@ public class ESUpdateState {
 					}
 				}
 				rs.close();
-				rs = queryState.moreResutls(true);
+				rs = queryState.moreResults(true);
 			}
 			if(indexReqs.size() > 0)  updateCount += this.execute(indexReqs, maxRequestsPerBulk);
 			return updateCount;

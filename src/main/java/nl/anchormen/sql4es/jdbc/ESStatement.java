@@ -207,7 +207,7 @@ public class ESStatement implements Statement {
 
 	@Override
 	public boolean getMoreResults() throws SQLException {
-		this.result = queryState.moreResutls(Utils.getBooleanProp(this.connection.getClientInfo(), Utils.PROP_RESULT_NESTED_LATERAL, true));
+		this.result = queryState.moreResults(Utils.getBooleanProp(this.connection.getClientInfo(), Utils.PROP_RESULT_NESTED_LATERAL, true));
 		return result != null;
 	}
 
@@ -265,7 +265,7 @@ public class ESStatement implements Statement {
 	@Override
 	public boolean getMoreResults(int current) throws SQLException {
 		// TODO use current param
-		ResultSet newResult = queryState.moreResutls(Utils.getBooleanProp(this.connection.getClientInfo(), Utils.PROP_RESULT_NESTED_LATERAL, true));
+		ResultSet newResult = queryState.moreResults(Utils.getBooleanProp(this.connection.getClientInfo(), Utils.PROP_RESULT_NESTED_LATERAL, true));
 		if(newResult == null) return false;
 		this.result = newResult;
 		return true;

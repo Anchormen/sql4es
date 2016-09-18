@@ -132,6 +132,7 @@ public class ESQueryState{
 		
 		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
 		int limit = determineLimit(info.getLimit());
+		System.out.println(limit);
 		// add limit and determine to use scroll
 		if(info.getAggregation() != null) {
 			req = req.setSize(0);
@@ -233,7 +234,7 @@ public class ESQueryState{
 		}
 	}
 	
-	public ResultSet moreResutls(boolean useLateral) throws SQLException {
+	public ResultSet moreResults(boolean useLateral) throws SQLException {
 		if(result != null && result.getOffset() + result.getNrRows() >= result.getTotal()) return null;
 		if(result != null) result.close();
 		if(esResponse.getScrollId() != null ){
@@ -268,7 +269,7 @@ public class ESQueryState{
 	 * Allows to set a limit other than using LIMIT in the SQL
 	 */
 	public void setMaxRows(int size){
-		this.maxRows = size;
+		if(size > 0) this.maxRows = size;
 	}
 	
 	public int getMaxRows(){
@@ -286,8 +287,7 @@ public class ESQueryState{
 	 * @return
 	 */
 	public int determineLimit(int limit){
-		if(limit <= -1 ) return this.maxRows;
-		if(maxRows <= -1) return limit;
+		if(limit == -1) return maxRows;
 		return Math.min(limit, maxRows);
 	}
 	
