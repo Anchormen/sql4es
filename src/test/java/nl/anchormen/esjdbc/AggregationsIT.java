@@ -416,7 +416,7 @@ public class AggregationsIT extends Sql4EsBase {
 	public void testDistinct() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 100, 1);
 		
-		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test&split.results=true").createStatement();
+		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		ResultSet rs = st.executeQuery("select distinct bool, count(*) from "+type);
 
 		int count = 0;

@@ -50,7 +50,7 @@ public class ESQueryState{
 	private final SearchAggregationParser aggParser = new SearchAggregationParser();
 	
 	// state definition
-	private int maxRows = -1;
+	private int maxRows = Integer.MAX_VALUE;
 	private SearchRequestBuilder request;
 	private ESResultSet result = null;
 	private SearchResponse esResponse;
@@ -135,16 +135,18 @@ public class ESQueryState{
 		// add limit and determine to use scroll
 		if(info.getAggregation() != null) {
 			req = req.setSize(0);
-		} else if(limit > 0 && limit < fetchSize){
-			req.setSize(limit);
-		} else if (Utils.getBooleanProp(props, "results.split", false)){
-			req.setSize(fetchSize);
-			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
-			if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
-		}else{
-			req.setSize(limit);
-			req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
-			if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
+		} else{
+			if(limit > 0 && limit < fetchSize){
+				req.setSize(limit);
+			} else if (Utils.getBooleanProp(props, "results.split", false)){
+				req.setSize(fetchSize);
+				req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
+				if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
+			}else{
+				req.setSize(limit);
+				req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
+				if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
+			}
 		}
 		
 		// use query cache when this was indicated in FROM clause
