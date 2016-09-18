@@ -487,7 +487,7 @@ public class ESUpdateState {
 			if(i<fields.size()-1) sb.append(", ");
 		}
 		sb.append("}}"); // close type and properties blocks
-		String json = sb.toString().replaceAll("([\\[|{|,|:]\\s)*(\\w+|\\*)(\\s*[\\]|}|:|,])", "$1\"$2\"$3");
+		String json = sb.toString().replaceAll("([\\[|{|,|:]\\s)*([\\w|\\-|\\*]+)(\\s*[\\]|}|:|,])", "$1\"$2\"$3");
 		
 		// create index if it does not yet exist
 		boolean indexExists = client.admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists();

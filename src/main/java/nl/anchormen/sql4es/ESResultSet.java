@@ -981,38 +981,39 @@ public class ESResultSet implements ResultSet {
 
 	@Override
 	public Date getDate(int columnIndex, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getDate(columnIndex);
 	}
 
 	@Override
 	public Date getDate(String columnLabel, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getDate(columnLabel);
+
 	}
 
 	@Override
 	public Time getTime(int columnIndex, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getTime(columnIndex);
 	}
 
 	@Override
 	public Time getTime(String columnLabel, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getTime(columnLabel);
 	}
 
 	@Override
 	public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getTimestamp(columnIndex);
 	}
 
 	@Override
 	public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO use provided calander (is that needed with ES?)
+		return getTimestamp(columnLabel);
 	}
 
 	@Override

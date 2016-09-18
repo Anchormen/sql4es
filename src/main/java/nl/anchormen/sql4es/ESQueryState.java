@@ -132,7 +132,6 @@ public class ESQueryState{
 		
 		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
 		int limit = determineLimit(info.getLimit());
-		System.out.println(limit);
 		// add limit and determine to use scroll
 		if(info.getAggregation() != null) {
 			req = req.setSize(0);
