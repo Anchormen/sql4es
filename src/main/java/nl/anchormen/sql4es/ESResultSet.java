@@ -124,7 +124,7 @@ public class ESResultSet implements ResultSet {
 		return rows.size();
 	}
 	
-	public void setTotal(int total){
+	public void setTotal(long total){
 		this.total = total;
 	}
 	

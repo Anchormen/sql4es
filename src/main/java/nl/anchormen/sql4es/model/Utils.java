@@ -39,6 +39,7 @@ public class Utils {
 	public static final String PROP_TABLE_COLUMN_MAP = "table.column.info.map";
 	public static final String PROP_FRAGMENT_SIZE = "fragment.size";
 	public static final String PROP_FRAGMENT_NUMBER = "fragment.number";
+	public static final String PROP_RESULTS_SPLIT = "results.split";
 	
 	public static String getLoggingInfo(){
 		StackTraceElement element = Thread.currentThread().getStackTrace()[2];

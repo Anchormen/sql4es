@@ -50,14 +50,18 @@ public class ESQueryState{
 	private final SearchAggregationParser aggParser = new SearchAggregationParser();
 	
 	// state definition
-	private int maxRows = Integer.MAX_VALUE;
 	private SearchRequestBuilder request;
 	private ESResultSet result = null;
 	private SearchResponse esResponse;
 	private Heading heading = new Heading();;
-	private int limit = -1;
 	private IComparison having = null;
 	private List<OrderBy> orderings = new ArrayList<OrderBy>();
+	
+	private int limit = -1;
+	private boolean splitRS;
+	private int fetchSize;
+	private int maxRowsRS = Integer.MAX_VALUE;
+	
 
 	/**
 	 * Creates a QueryState using the specified client. This involves retrieving index and type information
@@ -70,6 +74,9 @@ public class ESQueryState{
 		this.client = client;
 		this.statement = statement;
 		this.props = statement.getConnection().getClientInfo();
+		this.splitRS = Utils.getBooleanProp(props, Utils.PROP_RESULTS_SPLIT, false);
+		this.fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
+		if(splitRS) maxRowsRS = fetchSize;
 	}
 	
 	/**
@@ -87,7 +94,7 @@ public class ESQueryState{
 		}
 		this.request = client.prepareSearch(indices);
 		Map<String, Map<String, Integer>> esInfo = (Map<String, Map<String, Integer>>)Utils.getObjectProperty(props, Utils.PROP_TABLE_COLUMN_MAP);
-		ParseResult parseResult =  parser.parse(sql, query, maxRows, this.statement.getConnection().getClientInfo(), esInfo);
+		ParseResult parseResult =  parser.parse(sql, query, maxRowsRS, this.statement.getConnection().getClientInfo(), esInfo);
 		buildQuery(request, parseResult);
 		this.heading = parseResult.getHeading();
 		having = parseResult.getHaving();
@@ -130,20 +137,19 @@ public class ESQueryState{
 			}
 		} else req.setQuery(QueryBuilders.matchAllQuery());
 		
-		int fetchSize = Utils.getIntProp(props, Utils.PROP_FETCH_SIZE, 10000);
-		int limit = determineLimit(info.getLimit());
+		this.limit = info.getLimit();
+		if(splitRS) maxRowsRS = fetchSize;
+		
+		//System.out.println("fetch: "+fetchSize+" limit: "+limit+" split: "+splitRS);
+		
 		// add limit and determine to use scroll
 		if(info.getAggregation() != null) {
 			req = req.setSize(0);
 		} else{
-			if(limit > 0 && limit < fetchSize){
+			if(limit > 0 && limit < fetchSize){ // no scroll needed
 				req.setSize(limit);
-			} else if (Utils.getBooleanProp(props, "results.split", false)){
+			} else{ // use scrolling
 				req.setSize(fetchSize);
-				req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
-				if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
-			}else{
-				req.setSize(limit);
 				req.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000));
 				if (info.getSorts().isEmpty()) req.addSort("_doc", SortOrder.ASC); // scroll works fast with sort on _doc
 			}
@@ -226,8 +232,19 @@ public class ESQueryState{
 		}else{
 			// parse plain document hits
 			long total = esResponse.getHits().getTotalHits();
-			if(getLimit() > 0) total = Math.min(total, getLimit());
-			ESResultSet rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0);
+			if(limit > 0) total = Math.min(total, limit);
+			ESResultSet rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, null);
+			
+			while(rs.rowCount() < Math.min(maxRowsRS, rs.getTotal() - rs.getOffset())){
+				// keep adding data to the resultset as long as there are more results available
+				esResponse = client.prepareSearchScroll(esResponse.getScrollId())
+						.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
+						.execute().actionGet();
+				rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, rs);
+				// make sure the resultset does not contain more results than requested 
+				rs.setTotal(Math.min(esResponse.getHits().getTotalHits(), limit>0 ? limit : esResponse.getHits().getTotalHits()));
+			}			
+			
 			rs.executeComputations();
 			return rs;
 		}
@@ -268,33 +285,18 @@ public class ESQueryState{
 	 * Allows to set a limit other than using LIMIT in the SQL
 	 */
 	public void setMaxRows(int size){
-		if(size > 0) this.maxRows = size;
+		if(size > 0) this.maxRowsRS = size;
+		else this.maxRowsRS = Integer.MAX_VALUE;
+		if(this.maxRowsRS < fetchSize) fetchSize = maxRowsRS;
 	}
 	
 	public int getMaxRows(){
-		return maxRows;
+		return maxRowsRS;
 	}
 	
 	public ESQueryState copy() throws SQLException{
 		return new ESQueryState(client, statement);
 	}
-	
-	/**
-	 * Determines the correct number of results to fetch using the maxRows property and optionally
-	 * specified LIMIT within the query.
-	 * @param limit
-	 * @return
-	 */
-	public int determineLimit(int limit){
-		if(limit == -1) return maxRows;
-		return Math.min(limit, maxRows);
-	}
-	
-	public int getLimit(){
-		if(limit <= -1 ) return this.getMaxRows();
-		if(getMaxRows() <= -1) return limit;
-		return Math.min(limit, getMaxRows());
-	}	
 	
 	public int getIntProp(String name, int def) {
 		return Utils.getIntProp(props, name, def);
