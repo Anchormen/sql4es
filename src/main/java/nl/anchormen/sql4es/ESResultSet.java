@@ -215,7 +215,8 @@ public class ESResultSet implements ResultSet {
 		Object value = getForColumn(columnIndex);
 		if(value == null) return null;
 		try{
-			return (String)value;
+			// return (String)value; // strict check on the type
+			return value.toString();
 		}catch(Exception cce){
 			throw new SQLException("Value in column '"+columnIndex+"' is not of type String but is "+value.getClass());
 		}
