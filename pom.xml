@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.anchormen</groupId>
 	<artifactId>sql4es</artifactId>
-	<version>0.8.2.3</version>
+	<version>0.8_5.0.0</version>
 	<packaging>jar</packaging>
 	<name>sql-4-elasticsearch</name>
 	<url>https://github.com/Anchormen/sql4es</url>
@@ -26,8 +26,8 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<elasticsearch.version>2.3.3</elasticsearch.version>
-		<lucene.version>5.5.0</lucene.version>
+		<elasticsearch.version>5.0.0</elasticsearch.version>
+		<lucene.version>6.2.0</lucene.version>
 	</properties>
 
 	<repositories>
