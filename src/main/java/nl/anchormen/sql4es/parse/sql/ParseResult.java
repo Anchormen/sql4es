@@ -17,7 +17,7 @@ public class ParseResult {
 	private Heading heading;
 	private List<QuerySource> sources;
 	private QueryBuilder query;
-	private AggregationBuilder<?> aggregation;
+	private AggregationBuilder aggregation;
 	private IComparison having;
 	private List<OrderBy> sorts = new ArrayList<OrderBy>();
 	private int limit = -1;
@@ -25,7 +25,7 @@ public class ParseResult {
 	private Boolean requestScore = false;
 	private SQLException exception;
 	
-	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AggregationBuilder<?> aggregation,
+	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AggregationBuilder aggregation,
 			IComparison having, List<OrderBy> sorts, Integer limit, Boolean useCache, Boolean requestScore) {
 		super();
 		this.heading = heading;
@@ -55,7 +55,7 @@ public class ParseResult {
 		return query;
 	}
 
-	public AggregationBuilder<?> getAggregation() {
+	public AggregationBuilder getAggregation() {
 		return aggregation;
 	}
 
@@ -98,7 +98,7 @@ public class ParseResult {
 		return this;
 	}
 
-	public ParseResult setAggregation(AggregationBuilder<?> aggregation) {
+	public ParseResult setAggregation(AggregationBuilder aggregation) {
 		this.aggregation = aggregation;
 		return this;
 	}

@@ -166,7 +166,7 @@ public class Column implements Comparable<Column>{
 	 * @param sqlType
 	 */
 	public Column setSqlType(int sqlType) {
-		if(this.op != Operation.AVG)	this.sqlType = sqlType;
+		if(this.op != Operation.AVG) this.sqlType = sqlType;
 		return this;
 	}
 

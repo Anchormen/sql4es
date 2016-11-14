@@ -81,7 +81,6 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		throw new SQLException("The provided query does not contain a QueryBody");
 	}
 	
-	@SuppressWarnings("rawtypes")
 	@Override
 	protected ParseResult visitQuerySpecification(QuerySpecification node, Object obj){
 		this.heading = new Heading();
@@ -265,7 +264,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		sorts.addAll(top.getSorts());
 		boolean useCache = top.getUseCache() || nested.getUseCache();
 		QueryBuilder aggQuery = nested.getQuery();
-		AggregationBuilder<?> agg = nested.getAggregation();
+		AggregationBuilder agg = nested.getAggregation();
 		IComparison having = nested.getHaving();
 		
 		Heading head = new Heading();
@@ -308,7 +307,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		if(query instanceof MatchAllQueryBuilder) query = nested.getQuery();
 		else if(!(nested.getQuery() instanceof MatchAllQueryBuilder)) query = QueryBuilders.boolQuery().must(top.getQuery()).must(nested.getQuery());
 		
-		AggregationBuilder<?> agg = top.getAggregation();
+		AggregationBuilder agg = top.getAggregation();
 		IComparison having = top.getHaving();
 		Heading head = new Heading();
 		if(nested.getHeading().hasAllCols()){

@@ -33,7 +33,7 @@
 	<repositories>
       <repository>
          <id>elasticsearch-releases</id>
-         <url>https://maven.elasticsearch.org/releases</url>
+         <url>https://artifacts.elastic.co/maven</url>
          <releases>
             <enabled>true</enabled>
          </releases>
@@ -54,11 +54,16 @@
 			<artifactId>elasticsearch</artifactId>
 			<version>${elasticsearch.version}</version>
 		</dependency>
-		 <dependency>
-	         <groupId>org.elasticsearch.plugin</groupId>
-	         <artifactId>shield</artifactId>
+		<dependency>
+	         <groupId>org.elasticsearch.client</groupId>
+	         <artifactId>x-pack-transport</artifactId>
 	         <version>${elasticsearch.version}</version>
      	 </dependency>
+     	 <dependency>
+		    <groupId>org.apache.logging.log4j</groupId>
+		    <artifactId>log4j-core</artifactId>
+		    <version>2.6.2</version>
+		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
@@ -69,22 +74,32 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.13</version>
 		</dependency>
+		<!--
 		<dependency>
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
 			<version>2.9.1</version>
 		</dependency>
+		 -->
+		 <!-- 
 		<dependency>
 			<groupId>org.hamcrest</groupId>
 			<artifactId>hamcrest-library</artifactId>
 			<version>1.3</version>
 			<scope>test</scope>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.12</version>
 			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.hamcrest</groupId>
+					<artifactId>hamcrest-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
@@ -93,10 +108,10 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.elasticsearch</groupId>
-			<artifactId>elasticsearch</artifactId>
+			<groupId>org.elasticsearch.test</groupId>
+			<artifactId>framework</artifactId>
 			<version>${elasticsearch.version}</version>
-			<type>test-jar</type>
+			<scope>test</scope	>
 		</dependency>
 	</dependencies>
 	<build>

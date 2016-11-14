@@ -6,8 +6,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.joda.time.DateTimeZone;
@@ -56,7 +56,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 	public QueryBuilder parse(Expression node, QueryState state){
 		QueryWrapper qw = this.visitExpression(node, state);
 		if(qw == null) return null;
-		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery());
+		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery(), ScoreMode.Avg);
 		else return qw.getQuery();
 	}
 	
@@ -80,16 +80,16 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 				return new QueryWrapper(bqb, lqWrap.getNestField());
 			}else{
 				if(boolExp.getType() == Type.AND){
-					if(lqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+					if(lqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq, ScoreMode.Avg));
 					else bqb.must(lq);
 					
-					if(rqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					if(rqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq, ScoreMode.Avg));
 					else bqb.must(rq);
 				}else if(boolExp.getType() == Type.OR){
-					if(lqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+					if(lqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq, ScoreMode.Avg));
 					else bqb.should(lq);
 					
-					if(rqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					if(rqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq, ScoreMode.Avg));
 					else bqb.should(rq);
 				}
 			}
@@ -99,7 +99,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 			return this.processComparison(compareExp, state);
 		}else if( node instanceof NotExpression){
 			QueryWrapper qw = this.visitExpression(((NotExpression)node).getValue(), state);
-			return new QueryWrapper(QueryBuilders.notQuery(qw.getQuery()), qw.getNestField());
+			return new QueryWrapper(QueryBuilders.boolQuery().mustNot(qw.getQuery()), qw.getNestField()); 
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -118,7 +118,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 			String field = getVariableName( ((IsNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
 			field = fat.fieldName;
-			return new QueryWrapper(QueryBuilders.missingQuery(field));
+			return new QueryWrapper(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
 		} else if (node instanceof IsNotNullPredicate){
 			String field = getVariableName( ((IsNotNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -159,7 +159,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		String[] types = new String[state.getSources().size()];
 		for(int i=0; i<types.length; i++) types[i] = state.getSources().get(i).getSource();
 		if(compareExp.getType() == ComparisonExpression.Type.EQUAL){
-			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(types).ids((String)value);
+			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(types).addIds((String)value);
 			else if(field.equals(Heading.SEARCH)) comparison = QueryBuilders.queryStringQuery((String)value);
 			else if(value instanceof String) comparison = queryForString(field, (String)value);
 			else comparison = QueryBuilders.termQuery(field, value);
@@ -176,7 +176,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 				state.addException("Matching document _id using '<>' is not supported");
 				return null;
 			}
-			comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(field, value));
+			comparison = QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery(field, value));
 		};
 		if(fat.getFieldType() == Types.REF) 
 			return new QueryWrapper( comparison, field.split("\\.")[0]);

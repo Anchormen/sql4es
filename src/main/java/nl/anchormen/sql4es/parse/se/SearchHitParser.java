@@ -10,7 +10,7 @@ import java.util.Map;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.highlight.HighlightField;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 
 import nl.anchormen.sql4es.ESArray;
 import nl.anchormen.sql4es.ESResultSet;

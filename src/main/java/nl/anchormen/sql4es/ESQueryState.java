@@ -14,6 +14,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.Aggregation;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import com.facebook.presto.sql.tree.Explain;
@@ -97,8 +98,11 @@ public class ESQueryState{
 		// add highlighting
 		for(Column column : heading.columns()){
 			if(column.getOp() == Operation.HIGHLIGHT){
-				request.addHighlightedField(column.getColumn(), Utils.getIntProp(props, Utils.PROP_FRAGMENT_SIZE, 100), 
-						Utils.getIntProp(props, Utils.PROP_FRAGMENT_NUMBER, 1));
+				request.highlighter(
+						new HighlightBuilder().field(column.getColumn())
+							.fragmentSize(Utils.getIntProp(props, Utils.PROP_FRAGMENT_SIZE, 100))
+							.numOfFragments(Utils.getIntProp(props, Utils.PROP_FRAGMENT_NUMBER, 1))
+							);
 			}
 		}
 	}

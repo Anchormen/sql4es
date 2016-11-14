@@ -4,8 +4,7 @@
 			"type" : "integer"
 		},
 		"text": {
-			"type":"string",
-			"index":"not_analyzed"
+			"type":"keyword"
 		},
 		"nestedDoc" : {
 			"type" : "nested",
@@ -14,8 +13,7 @@
 					"type" : "integer"
 				},
 				"text": {
-					"type":"string",
-					"index":"not_analyzed"
+					"type":"keyword"
 				},
 				"nestedDoc" : {
 					"type" : "nested",
@@ -24,8 +22,7 @@
 							"type" : "integer"
 						},
 						"text": {
-							"type":"string",
-							"index":"not_analyzed"
+							"type":"keyword"
 						}
 					}
 				}

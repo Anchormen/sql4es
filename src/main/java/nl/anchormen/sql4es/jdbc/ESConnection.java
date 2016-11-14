@@ -31,8 +31,9 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.shield.ShieldPlugin;
 import org.elasticsearch.test.ESIntegTestCase;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,20 +94,22 @@ public class ESConnection implements Connection{
 		if(props.containsKey("test")){ // used for integration tests
 			return ESIntegTestCase.client();
 		}else try {
-			Settings.Builder settingsBuilder = Settings.settingsBuilder();
+			Settings.Builder settingsBuilder = Settings.builder();
 			for(Object key : this.props.keySet()){
 				settingsBuilder.put(key, this.props.get(key));
 			}
 			if(props.containsKey("cluster.name")){
 				settingsBuilder.put("request.headers.X-Found-Cluster", props.get("cluster.name"));
 			}
-			if(props.containsKey("ssl")){
-				settingsBuilder.put("shield.transport.ssl", true);
-			}
 			
-			Settings settings = settingsBuilder.build();
-			TransportClient client = TransportClient.builder().settings(settings).addPlugin(ShieldPlugin.class).build()
-				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+			TransportClient client = null;
+			if(props.containsKey("xpack.security.user")){
+				client = new PreBuiltXPackTransportClient(settingsBuilder.build())
+						.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+			}else{
+				client = new PreBuiltTransportClient(settingsBuilder.build())
+					.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+			}
 			
 			// add additional hosts if set in URL query part
 			if(this.props.containsKey("es.hosts"))
