@@ -96,7 +96,7 @@ public class ArithmeticsIT extends Sql4EsBase {
 	
 	@Test
 	public void combinedComputations() throws Exception{
-		createIndexTypeWithDocs(index, type, true, 10,2);
+		createIndexTypeWithDocs(index, type, true, 10, 2);
 		
 		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		ResultSet rs = st.executeQuery("select intNum/shortNum as calc from "+type+" where intNum > 0");
@@ -132,7 +132,7 @@ public class ArithmeticsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(10, count);
-		
+
 		rs = st.executeQuery("select bool, sum(intNum)/count(1) as avg1, avg(intNum) as avg2 from "+type+" group by bool ");
 		rsm = rs.getMetaData();
 		assertEquals(Types.BOOLEAN, rsm.getColumnType(1));

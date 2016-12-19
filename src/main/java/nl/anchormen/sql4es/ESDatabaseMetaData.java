@@ -1012,6 +1012,12 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					case "string" :
 						row.set(4, Heading.getTypeIdForObject(new String())); 
 						break;
+					case "keyword" :
+						row.set(4, Heading.getTypeIdForObject(new String())); 
+						break;
+					case "text" :
+						row.set(4, Heading.getTypeIdForObject(new String())); 
+						break;
 					case "long" :
 						row.set(4, Heading.getTypeIdForObject(new Long(1))); 
 						break;
