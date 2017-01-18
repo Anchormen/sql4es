@@ -72,7 +72,7 @@ public class InsertIT extends Sql4EsBase {
 		assertEquals(6, rsm.getColumnCount());
 		for(int i=1; i<=rsm.getColumnCount(); i++){
 			if(rsm.getColumnName(i).equals("col1")) assertEquals(Types.BIGINT, rsm.getColumnType(i));
-			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.DOUBLE, rsm.getColumnType(i));
+			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.FLOAT, rsm.getColumnType(i));
 			if(rsm.getColumnName(i).equals("col3")) assertEquals(Types.VARCHAR, rsm.getColumnType(i));
 		}
 		count = 0;
@@ -92,7 +92,7 @@ public class InsertIT extends Sql4EsBase {
 		assertEquals(6, rsm.getColumnCount());
 		for(int i=1; i<=rsm.getColumnCount(); i++){
 			if(rsm.getColumnName(i).equals("col1")) assertEquals(Types.BIGINT, rsm.getColumnType(i));
-			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.DOUBLE, rsm.getColumnType(i));
+			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.FLOAT, rsm.getColumnType(i));
 			if(rsm.getColumnName(i).equals("col3")) assertEquals(Types.VARCHAR, rsm.getColumnType(i));
 		}
 		count = 0;
@@ -110,7 +110,7 @@ public class InsertIT extends Sql4EsBase {
 		assertEquals(6, rsm.getColumnCount());
 		for(int i=1; i<=rsm.getColumnCount(); i++){
 			if(rsm.getColumnName(i).equals("col1")) assertEquals(Types.BIGINT, rsm.getColumnType(i));
-			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.DOUBLE, rsm.getColumnType(i));
+			if(rsm.getColumnName(i).equals("col2")) assertEquals(Types.FLOAT, rsm.getColumnType(i));
 			if(rsm.getColumnName(i).equals("col3")) assertEquals(Types.VARCHAR, rsm.getColumnType(i));
 		}
 		count = 0;

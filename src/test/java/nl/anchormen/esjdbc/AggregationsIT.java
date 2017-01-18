@@ -119,7 +119,7 @@ public class AggregationsIT extends Sql4EsBase {
 		}
 		assertEquals(2, count);
 		rs.close();
-		
+
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) from "+type+" GROUP BY bool, nb");
 		rsm = rs.getMetaData();
 		assertEquals(6, rsm.getColumnCount());
@@ -191,7 +191,7 @@ public class AggregationsIT extends Sql4EsBase {
 		}
 		assertEquals(2, count);
 		rs.close();
-		
+
 		st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
 		rs = st.executeQuery("select bool, nestedDoc.bool as nb, count(*), max(intNum), min(floatNum), avg(doubleNum) "
 				+ "from "+type+" WHERE shortNum >= 50 AND doubleNum < 60 GROUP BY bool, nb");
@@ -424,8 +424,7 @@ public class AggregationsIT extends Sql4EsBase {
 			count++;
 		}
 		assertEquals(2, count);
-		
-		rs = st.executeQuery("select distinct bool, nestedDoc.bool, count(*) from "+type+" WHERE longNum > 32.5");
+		rs = st.executeQuery("select distinct bool, nestedDoc.bool, count(*) from "+type+" WHERE longNum > 32");
 		count = 0;
 		while(rs.next()){
 			count++;

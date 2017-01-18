@@ -67,9 +67,9 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		assertEquals(Types.BIGINT, rsm.getColumnType(3));
 		assertEquals(Types.BOOLEAN, rsm.getColumnType(4));
 		assertEquals(Types.OTHER, rsm.getColumnType(5));
-		assertEquals(Types.DOUBLE, rsm.getColumnType(6));
+		assertEquals(Types.FLOAT, rsm.getColumnType(6));
 		assertEquals(Types.BIGINT, rsm.getColumnType(7));
-		assertEquals(Types.DOUBLE, rsm.getColumnType(8));
+		assertEquals(Types.FLOAT, rsm.getColumnType(8));
 		assertEquals(Types.ARRAY, rsm.getColumnType(9));
 		assertEquals(Types.VARCHAR, rsm.getColumnType(10));
 		assertEquals(Types.OTHER, rsm.getColumnType(11));

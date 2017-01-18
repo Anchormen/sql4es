@@ -31,7 +31,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.test.ESIntegTestCase;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient;
 import org.slf4j.Logger;
@@ -91,11 +90,22 @@ public class ESConnection implements Connection{
 	 * @throws SQLException
 	 */
 	private Client buildClient() throws SQLException {
-		if(props.containsKey("test")){ // used for integration tests
-			return ESIntegTestCase.client();
-		}else try {
+		/*if(props.containsKey("test")){ // used for integration tests
+			return org.elasticsearch.test.ESIntegTestCase.client();
+		}else*/ try {
 			Settings.Builder settingsBuilder = Settings.builder();
+
 			for(Object key : this.props.keySet()){
+				// remove driver properties, since es 5.0 the client throws errors for unknown properties
+				if(key.equals(Utils.PROP_DEFAULT_ROW_LENGTH) ||
+					key.equals(Utils.PROP_FETCH_SIZE) ||
+					key.equals(Utils.PROP_FRAGMENT_NUMBER) ||
+					key.equals(Utils.PROP_FRAGMENT_SIZE) ||
+					key.equals(Utils.PROP_QUERY_CACHE_TABLE) ||
+					key.equals(Utils.PROP_QUERY_TIMEOUT_MS) ||
+					key.equals(Utils.PROP_RESULT_NESTED_LATERAL) ||
+					key.equals(Utils.PROP_SCROLL_TIMEOUT_SEC)
+				) continue;
 				settingsBuilder.put(key, this.props.get(key));
 			}
 			if(props.containsKey("cluster.name")){
@@ -110,7 +120,6 @@ public class ESConnection implements Connection{
 				client = new PreBuiltTransportClient(settingsBuilder.build())
 					.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
 			}
-			
 			// add additional hosts if set in URL query part
 			if(this.props.containsKey("es.hosts"))
 				for(String hostPort : this.props.getProperty("es.hosts").split(",")){

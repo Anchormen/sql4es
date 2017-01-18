@@ -1009,7 +1009,13 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				row.set(11, properties.toString());
 				row.set(5, type); 
 				switch (type){
-					case "string" :
+					case "string" : // field type before version 5.0
+						row.set(4, Heading.getTypeIdForObject(new String())); 
+						break;
+					case "text" : // field type after version 5.0
+						row.set(4, Heading.getTypeIdForObject(new String())); 
+						break;
+					case "keyword" : // field type after version 5.0
 						row.set(4, Heading.getTypeIdForObject(new String())); 
 						break;
 					case "long" :
@@ -1046,7 +1052,6 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 						row.set(4, Types.OTHER); 
 						row.set(5, "unknown"); 
 						break;
-						
 				}
 				nextIndex++;
 				result.add(row);

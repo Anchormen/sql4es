@@ -97,7 +97,8 @@ public class GroupParser extends SelectParser {
 			if(metric.getOp() == Operation.AVG) 
 				parentAgg.subAggregation(AggregationBuilders.avg(metric.getAggName()).field(metric.getColumn()));
 			else if(addCount && metric.getOp() == Operation.COUNT)
-				parentAgg.subAggregation(AggregationBuilders.count(metric.getAggName()));
+				// count on _type field to get the count for all records instead of a specific field
+				parentAgg.subAggregation(AggregationBuilders.count(metric.getAggName()).field("_type"));
 			else if(metric.getOp() == Operation.MAX) 
 				parentAgg.subAggregation(AggregationBuilders.max(metric.getAggName()).field(metric.getColumn()));
 			else if(metric.getOp() == Operation.MIN) 
