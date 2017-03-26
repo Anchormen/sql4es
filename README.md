@@ -88,7 +88,7 @@ Some SQL statements or Elasticsearch features that are ***not (yet) supported***
 - Elasticsearch features like ~~full text search, highlighting,~~ suggestions and  templates are not supported.
   - added in 0.6.2.1: full text search can be done using *_search = '…'* and highlighting trough *SELECT highlight(some-field) FROM …*
 - ~~Count (Distinct …)~~ 
-  - Added in 0.9.2.4
+  - Added in 0.9.2.4. It is possible to set the Elasticsearch precision threshold (see [cardinality aggregations](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-cardinality-aggregation.html)) by using the precision.threshold parameter in the connection url.
 
 ### Concepts
 
@@ -363,6 +363,7 @@ It is possible to set parameters through the provided url. All parameters are ex
 - result.nested.lateral (boolean, default true): specifies weather nested results must be exploded (the default) or not. Can be set to false when working with the driver from your own code. In this case a column containing a nested object (wrapped in a ResultSet) will have java.sql.Types =  Types.JAVA_OBJECT and can be used as (ResultSet)rs.getObject(colNr).
 - fragment.size (int, default 100): specifies the preferred fragment length in characters.
 - fragment.count (int, default 1): specifies the maximum number of fragments to return when requesting highlighting.
+- precision.threshold (int, default 3000): specifies the precision used for [cardinality aggregations](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-cardinality-aggregation.html)
 
 ### Example using SQLWorkbenchJ
 
