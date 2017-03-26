@@ -52,7 +52,7 @@ public class SimpleComparison implements IComparison{
 				rightValue = this.rightValue.doubleValue();
 			}
 
-			if(this.comparisonType == Type.EQUAL) return leftValue == rightValue;
+			if(this.comparisonType == Type.EQUAL) return leftValue.equals( rightValue );
 			if(this.comparisonType == Type.GREATER_THAN) return leftValue > rightValue;
 			if(this.comparisonType == Type.GREATER_THAN_OR_EQUAL) return leftValue >= rightValue;
 			if(this.comparisonType == Type.LESS_THAN) return leftValue < rightValue;

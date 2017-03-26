@@ -27,13 +27,13 @@ public class DatabaseMetadataIT extends Sql4EsBase {
 	public void testReadingProperties() throws Exception{
 		Driver driver = DriverManager.getDriver("jdbc:sql4es://localhost:9300/index");
 		DriverPropertyInfo[] info = driver.getPropertyInfo("jdbc:sql4es://localhost:9300/index", null);
-		assertEquals(8, info.length);
+		assertEquals(9, info.length);
 		for(DriverPropertyInfo i : info){
 			if(i.name.equals("query.timeout.ms")) assertEquals("10000", i.value);
 		}
 		
 		info = driver.getPropertyInfo("jdbc:sql4es://localhost:9300/index?query.cache.table=tmp", null);
-		assertEquals(8, info.length);
+		assertEquals(9, info.length);
 		for(DriverPropertyInfo i : info){
 			if(i.name.equals("query.cache.table")) assertEquals("tmp", i.value);
 		}

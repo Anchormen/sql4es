@@ -1,3 +1,5 @@
+Elastic announced the great news that they are workong on SQL support at Elastic{ON} 2017! You can find the talk on this topic on the [Elastic Website](https://www.elastic.co/elasticon/conf/2017/sf/elasticsearch-sql)
+
 ### sql4es: JDBC driver for Elasticsearch
 
 Sql-for-Elasticsearch (sql4es) is a jdbc 4.1 driver for **Elasticsearch 2.0 - 2.4** implementing the majority of the JDBC interfaces: Connection, Statement, PreparedStatment, ResultSet, Batch and DataBase- /  ResultSetMetadata. The screenshot below shows SQLWorkbenchJ with a selection of SQL statements that can be executed using the driver. As of version 0.8.2.3 the driver supports Shield allowing the use of credentials and SSL.
