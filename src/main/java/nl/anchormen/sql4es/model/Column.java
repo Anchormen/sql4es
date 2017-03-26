@@ -12,7 +12,7 @@ import nl.anchormen.sql4es.model.expression.ICalculation;
  */
 public class Column implements Comparable<Column>{
 	
-	public enum Operation {NONE, AVG, SUM, MIN, MAX, COUNT, HIGHLIGHT}
+	public enum Operation {NONE, AVG, SUM, MIN, MAX, COUNT, HIGHLIGHT, COUNT_DISTINCT}
 	
 	private String columnName;
 	private String tableName;
@@ -38,6 +38,7 @@ public class Column implements Comparable<Column>{
 			case SUM: sqlType = Types.DOUBLE; break;
 			case AVG: sqlType = Types.DOUBLE; break;
 			case HIGHLIGHT: sqlType = Types.ARRAY; break;
+			case COUNT_DISTINCT: sqlType = Types.BIGINT; break;
 			default: sqlType = Types.OTHER;
 		}
 		if(calculation != null) sqlType = Types.DOUBLE;
@@ -136,6 +137,7 @@ public class Column implements Comparable<Column>{
 			case MAX: return "max("+name+")";
 			case MIN: return "min("+name+")";
 			case SUM: return "sum("+name+")";
+			case COUNT_DISTINCT: return "count (distinct "+name+")";
 			default : return name;
 		}
 	}
@@ -151,6 +153,7 @@ public class Column implements Comparable<Column>{
 			case MAX: return "max("+name+")";
 			case MIN: return "min("+name+")";
 			case SUM: return "sum("+name+")";
+			case COUNT_DISTINCT: return "count (distinct "+name+")";
 			default : return name;
 		}
 	}

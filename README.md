@@ -53,7 +53,7 @@ Connection con = DriverManager.getConnection("jdbc:sql4es://f03c93be1efeb9be9b2f
 Simply said the sql4es driver translates SQL statements to their Elasticsearch counterparts and parses results into ResultSet implementations. The following sql statements are supported:
 
 - SELECT: fetches documents (with or without scoring) or aggregations from elasticsearch
-  * COUNT, MIN, MAX, SUM, AVG
+  * COUNT (DISTINCT ...), MIN, MAX, SUM, AVG
   * DISTINCT
   * WHERE (=, >, >=, <, <=, <>, IN, LIKE, AND, OR, IS NULL, IS NOT NULL, NOT [condition])
   * GROUP BY
@@ -87,6 +87,8 @@ Some SQL statements or Elasticsearch features that are ***not (yet) supported***
 - Parent child relationships are not supported. It is currently not possible to index or retrieve fields of this type.
 - Elasticsearch features like ~~full text search, highlighting,~~ suggestions and  templates are not supported.
   - added in 0.6.2.1: full text search can be done using *_search = '…'* and highlighting trough *SELECT highlight(some-field) FROM …*
+- ~~Count (Distinct …)~~ 
+  - Added in 0.9.2.4
 
 ### Concepts
 

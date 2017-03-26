@@ -78,4 +78,6 @@ public interface QueryState {
 	
 	public String getStringValue(String key);
 	
+	public boolean isCountDistinct();
+	
 }

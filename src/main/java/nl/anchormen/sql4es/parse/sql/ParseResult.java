@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 
 import nl.anchormen.sql4es.model.Heading;
@@ -17,7 +18,7 @@ public class ParseResult {
 	private Heading heading;
 	private List<QuerySource> sources;
 	private QueryBuilder query;
-	private AggregationBuilder<?> aggregation;
+	private AbstractAggregationBuilder aggregation;
 	private IComparison having;
 	private List<OrderBy> sorts = new ArrayList<OrderBy>();
 	private int limit = -1;
@@ -25,7 +26,7 @@ public class ParseResult {
 	private Boolean requestScore = false;
 	private SQLException exception;
 	
-	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AggregationBuilder<?> aggregation,
+	public ParseResult(Heading heading, List<QuerySource> sources, QueryBuilder query, AbstractAggregationBuilder aggregation,
 			IComparison having, List<OrderBy> sorts, Integer limit, Boolean useCache, Boolean requestScore) {
 		super();
 		this.heading = heading;
@@ -55,7 +56,7 @@ public class ParseResult {
 		return query;
 	}
 
-	public AggregationBuilder<?> getAggregation() {
+	public AbstractAggregationBuilder getAggregation() {
 		return aggregation;
 	}
 

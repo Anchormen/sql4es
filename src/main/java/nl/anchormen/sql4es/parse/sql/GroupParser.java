@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
@@ -114,6 +115,14 @@ public class GroupParser extends SelectParser {
 			if(s.getOp() == Operation.NONE && s.getCalculation() == null) distinct.add(s);
 		}
 		return buildAggregationQuery(distinct, 0, state);
+	}
+	
+	public FilterAggregationBuilder addCountDistinctAggregation(QueryState state){
+		FilterAggregationBuilder result = AggregationBuilders.filter("cardinality_aggs").filter(QueryBuilders.matchAllQuery());
+		for(Column col : state.getHeading().columns()){
+			result.subAggregation( AggregationBuilders.cardinality(col.getLabel()).field(col.getColumn()).precisionThreshold(state.getIntProp(Utils.PROP_PRECISION_THRESHOLD, 3000)) );
+		}
+		return result;
 	}
 	
 }

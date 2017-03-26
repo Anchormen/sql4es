@@ -7,6 +7,7 @@ import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.bucket.filter.InternalFilter;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.metrics.InternalNumericMetricsAggregation;
+import org.elasticsearch.search.aggregations.metrics.cardinality.InternalCardinality;
 
 import nl.anchormen.sql4es.ESResultSet;
 import nl.anchormen.sql4es.model.Column;
@@ -31,6 +32,8 @@ public class SearchAggregationParser {
 			dfsAggregations((Terms)agg, rs, rs.getNewRow());
 		}else if (agg instanceof InternalFilter){
 			processFilterAgg((InternalFilter)agg, rs);
+		}else if (agg instanceof InternalCardinality){
+			processCardinalityAgg((InternalCardinality)agg, rs);
 		}else throw new SQLException ("Unknown aggregation type "+agg.getClass().getName());
 	}
 	
@@ -103,6 +106,13 @@ public class SearchAggregationParser {
 				row.set(column.getIndex(), numericAgg.value());
 			}else throw new SQLException("Unable to parse aggregation of type "+agg.getClass());
 		}
+		rs.add(row);
+	}
+	
+	private void processCardinalityAgg(InternalCardinality agg, ESResultSet rs) {
+		List<Object> row = rs.getNewRow();
+		Column column = rs.getHeading().getColumnByLabel(agg.getName());
+		row.set(column.getIndex(), agg.value());
 		rs.add(row);
 	}
 	

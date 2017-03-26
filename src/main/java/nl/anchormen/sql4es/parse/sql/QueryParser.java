@@ -12,6 +12,7 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 
 import com.facebook.presto.sql.tree.AstVisitor;
@@ -87,7 +88,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		this.heading = new Heading();
 		BasicQueryState state = new BasicQueryState(sql, heading, props);
 		int limit = -1;
-		AggregationBuilder aggregation = null;
+		AbstractAggregationBuilder aggregation = null;
 		QueryBuilder query = null;
 		IComparison having = null;
 		List<OrderBy> orderings = new ArrayList<OrderBy>();
@@ -127,7 +128,15 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		if(node.getSelect().isDistinct()){
 			aggregation = groupParser.addDistinctAggregation(state);
 		}
-
+		
+		// check for COUNT DISTINCT in combination with a non aggregation projection
+		if(state.isCountDistinct()){
+			for(Column c: state.getHeading().columns()) if(c.getOp() == Operation.NONE){
+				state.addException("Unable to combine COUNT DISTINCT with a normal SELECT within a single query");
+				return new ParseResult(state.getException());
+			}
+		};
+		
 		// add a Query
 		query = QueryBuilders.matchAllQuery();
 		if(node.getWhere().isPresent()){
@@ -139,7 +148,11 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		if(node.getGroupBy() != null && node.getGroupBy().size() > 0){
 			aggregation = groupParser.parse(node.getGroupBy(), state);
 		}else if(heading.aggregateOnly()){
-			aggregation = groupParser.buildFilterAggregation(query, heading);
+			if(state.isCountDistinct())
+				// create aggregation in case of COUNT DISTINCT
+				aggregation = groupParser.addCountDistinctAggregation(state);
+			else 
+				aggregation = groupParser.buildFilterAggregation(query, heading);
 		}
 		if(state.hasException()) return new ParseResult(state.getException());
 		
@@ -265,7 +278,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		sorts.addAll(top.getSorts());
 		boolean useCache = top.getUseCache() || nested.getUseCache();
 		QueryBuilder aggQuery = nested.getQuery();
-		AggregationBuilder<?> agg = nested.getAggregation();
+		AbstractAggregationBuilder agg = nested.getAggregation();
 		IComparison having = nested.getHaving();
 		
 		Heading head = new Heading();
@@ -308,7 +321,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		if(query instanceof MatchAllQueryBuilder) query = nested.getQuery();
 		else if(!(nested.getQuery() instanceof MatchAllQueryBuilder)) query = QueryBuilders.boolQuery().must(top.getQuery()).must(nested.getQuery());
 		
-		AggregationBuilder<?> agg = top.getAggregation();
+		AbstractAggregationBuilder agg = top.getAggregation();
 		IComparison having = top.getHaving();
 		Heading head = new Heading();
 		if(nested.getHeading().hasAllCols()){

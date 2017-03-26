@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Properties;
 
 import nl.anchormen.sql4es.QueryState;
+import nl.anchormen.sql4es.model.Column.Operation;
 
 /**
  * An implementation of {@link QueryState} used to hold information created during SQL parsing by the Presto parser.
@@ -99,6 +100,14 @@ public class BasicQueryState implements QueryState {
 	@Override
 	public String getStringValue(String key) {
 		return (String)kvStore.get(key);
+	}
+
+	@Override
+	public boolean isCountDistinct() {
+		for(Column col : getHeading().columns()){
+			if(col.getOp() == Operation.COUNT_DISTINCT) return true;
+		}
+		return false;
 	}
 
 }

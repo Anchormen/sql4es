@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.anchormen</groupId>
 	<artifactId>sql4es</artifactId>
-	<version>0.8.2.4</version>
+	<version>0.9.2.4</version>
 	<packaging>jar</packaging>
 	<name>sql-4-elasticsearch</name>
 	<url>https://github.com/Anchormen/sql4es</url>

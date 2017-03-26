@@ -28,6 +28,7 @@ public class Utils {
 	private static final String RESULT_NESTED_LATERAL = "true";
 	private static final int FRAGMENT_SIZE = 100;
 	private static final int FRAGMENT_NUMBER = 1;
+	private static final int PRECISION_THRESHOLD = 3000;
 	
 	// property keys
 	public static final String PROP_FETCH_SIZE = "fetch.size";
@@ -40,6 +41,8 @@ public class Utils {
 	public static final String PROP_FRAGMENT_SIZE = "fragment.size";
 	public static final String PROP_FRAGMENT_NUMBER = "fragment.number";
 	public static final String PROP_RESULTS_SPLIT = "results.split";
+	public static final String PROP_PRECISION_THRESHOLD = "precision.threshold";
+	
 	
 	public static String getLoggingInfo(){
 		StackTraceElement element = Thread.currentThread().getStackTrace()[2];
@@ -62,6 +65,7 @@ public class Utils {
 		defaults.put(PROP_RESULT_NESTED_LATERAL, RESULT_NESTED_LATERAL);
 		defaults.put(PROP_FRAGMENT_SIZE, FRAGMENT_SIZE);
 		defaults.put(PROP_FRAGMENT_NUMBER, FRAGMENT_NUMBER);
+		defaults.put(PROP_PRECISION_THRESHOLD, PRECISION_THRESHOLD);
 		return defaults;
 	}
 	

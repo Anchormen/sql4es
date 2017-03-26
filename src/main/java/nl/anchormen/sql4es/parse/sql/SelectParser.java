@@ -80,6 +80,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 		}else if(node instanceof FunctionCall){
 			FunctionCall fc = (FunctionCall)node;
 			String operator = fc.getName().toString();
+			if(operator.equalsIgnoreCase("count") && fc.isDistinct()) operator = "COUNT_DISTINCT";
 			
 			String column;
 			if(fc.getArguments().size() == 0) column = "*";
