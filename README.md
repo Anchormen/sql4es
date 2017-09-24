@@ -1,4 +1,4 @@
-Elastic announced the great news that they are workong on SQL support at Elastic{ON} 2017! You can find the talk on this topic on the [Elastic Website](https://www.elastic.co/elasticon/conf/2017/sf/elasticsearch-sql)
+Elastic announced the great news that they are working on SQL support at Elastic{ON} 2017! You can find the talk on this topic on the [Elastic Website](https://www.elastic.co/elasticon/conf/2017/sf/elasticsearch-sql)
 
 ### sql4es: JDBC driver for Elasticsearch
 
