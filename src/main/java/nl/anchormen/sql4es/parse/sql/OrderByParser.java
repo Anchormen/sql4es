@@ -1,15 +1,7 @@
 package nl.anchormen.sql4es.parse.sql;
 
+import com.facebook.presto.sql.tree.*;
 import org.elasticsearch.search.sort.SortOrder;
-
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.IsNullPredicate;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
-import com.facebook.presto.sql.tree.SearchedCaseExpression;
-import com.facebook.presto.sql.tree.SortItem;
-import com.facebook.presto.sql.tree.WhenClause;
 
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
@@ -39,8 +31,8 @@ public class OrderByParser extends AstVisitor<OrderBy, QueryState>{
 				orderKey = SelectParser.visitDereferenceExpression(
 						(DereferenceExpression)((IsNullPredicate)when.getOperand()).getValue());
 			}
-		}else if(si.getSortKey() instanceof QualifiedNameReference){
-			orderKey = ((QualifiedNameReference)si.getSortKey()).getName().toString();
+		}else if(si.getSortKey() instanceof Identifier){
+			orderKey = ((Identifier)si.getSortKey()).getName(); //.getValue();
 		}else {
 			state.addException("Order statement with type '"+si.getSortKey().getClass().getName()+"' is not supported");
 			return null;

@@ -6,6 +6,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import com.facebook.presto.sql.tree.*;
+import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -14,24 +16,6 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
 
-import com.facebook.presto.sql.tree.ArithmeticUnaryExpression;
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.BetweenPredicate;
-import com.facebook.presto.sql.tree.BooleanLiteral;
-import com.facebook.presto.sql.tree.ComparisonExpression;
-import com.facebook.presto.sql.tree.CurrentTime;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.DoubleLiteral;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.InListExpression;
-import com.facebook.presto.sql.tree.InPredicate;
-import com.facebook.presto.sql.tree.IsNotNullPredicate;
-import com.facebook.presto.sql.tree.IsNullPredicate;
-import com.facebook.presto.sql.tree.LikePredicate;
-import com.facebook.presto.sql.tree.LogicalBinaryExpression;
-import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
-
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
@@ -39,10 +23,6 @@ import nl.anchormen.sql4es.model.QuerySource;
 import nl.anchormen.sql4es.model.QueryWrapper;
 import nl.anchormen.sql4es.model.Utils;
 
-import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.NotExpression;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
-import com.facebook.presto.sql.tree.StringLiteral;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
 
 /**
@@ -56,7 +36,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 	public QueryBuilder parse(Expression node, QueryState state){
 		QueryWrapper qw = this.visitExpression(node, state);
 		if(qw == null) return null;
-		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery());
+		if(qw.getNestField() != null) return QueryBuilders.nestedQuery(qw.getNestField(), qw.getQuery(), ScoreMode.None);
 		else return qw.getQuery();
 	}
 	
@@ -65,31 +45,31 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		if( node instanceof LogicalBinaryExpression){
 			LogicalBinaryExpression boolExp = (LogicalBinaryExpression)node;
 			BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-			QueryWrapper lqWrap = boolExp.getLeft().accept(this, state);
-			QueryWrapper rqWrap = boolExp.getRight().accept(this, state);
+			QueryWrapper lqWrap = process(boolExp.getLeft(), state);
+			QueryWrapper rqWrap = process(boolExp.getRight(), state);
 			QueryBuilder lq = lqWrap.getQuery();
 			QueryBuilder rq = rqWrap.getQuery();
 			if(lqWrap.getNestField() != null && lqWrap.getNestField().equals(rqWrap.getNestField())){
-				if(boolExp.getType() == Type.AND){
+				if(boolExp.getType() == LogicalBinaryExpression.Type.AND){
 					bqb.must(lq);
 					bqb.must(rq);
-				}else if(boolExp.getType() == Type.OR){
+				}else if(boolExp.getType() == LogicalBinaryExpression.Type.OR){
 					bqb.should(lq);
 					bqb.should(rq);
 				}
 				return new QueryWrapper(bqb, lqWrap.getNestField());
 			}else{
-				if(boolExp.getType() == Type.AND){
-					if(lqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+				if(boolExp.getType() == LogicalBinaryExpression.Type.AND){
+					if(lqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq, ScoreMode.None));
 					else bqb.must(lq);
 					
-					if(rqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					if(rqWrap.getNestField() != null) bqb.must(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq, ScoreMode.None));
 					else bqb.must(rq);
-				}else if(boolExp.getType() == Type.OR){
-					if(lqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq));
+				}else if(boolExp.getType() == LogicalBinaryExpression.Type.OR){
+					if(lqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(lqWrap.getNestField(), lq, ScoreMode.None));
 					else bqb.should(lq);
 					
-					if(rqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq));
+					if(rqWrap.getNestField() != null) bqb.should(QueryBuilders.nestedQuery(rqWrap.getNestField(), rq, ScoreMode.None));
 					else bqb.should(rq);
 				}
 			}
@@ -99,7 +79,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 			return this.processComparison(compareExp, state);
 		}else if( node instanceof NotExpression){
 			QueryWrapper qw = this.visitExpression(((NotExpression)node).getValue(), state);
-			return new QueryWrapper(QueryBuilders.notQuery(qw.getQuery()), qw.getNestField());
+			return new QueryWrapper(QueryBuilders.boolQuery().mustNot(qw.getQuery()), qw.getNestField());
 		}else if (node instanceof LikePredicate){
 			String field = getVariableName(((LikePredicate)node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -118,7 +98,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 			String field = getVariableName( ((IsNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
 			field = fat.fieldName;
-			return new QueryWrapper(QueryBuilders.missingQuery(field));
+			return new QueryWrapper(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
 		} else if (node instanceof IsNotNullPredicate){
 			String field = getVariableName( ((IsNotNullPredicate) node).getValue());
 			FieldAndType fat = getFieldAndType(field, state);
@@ -147,7 +127,7 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		FieldAndType fat = getFieldAndType(field, state);
 		field = fat.getFieldName();
 
-		if(compareExp.getRight() instanceof QualifiedNameReference || compareExp.getRight() instanceof DereferenceExpression){
+		if(compareExp.getRight() instanceof Identifier || compareExp.getRight() instanceof DereferenceExpression){
 			state.addException("Matching two columns is not supported : "+compareExp);
 			return null;
 		}
@@ -158,25 +138,25 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		QueryBuilder comparison = null;
 		String[] types = new String[state.getSources().size()];
 		for(int i=0; i<types.length; i++) types[i] = state.getSources().get(i).getSource();
-		if(compareExp.getType() == ComparisonExpression.Type.EQUAL){
-			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(types).ids((String)value);
+		if(compareExp.getType() == ComparisonExpressionType.EQUAL){
+			if(field.equals(Heading.ID)) comparison = QueryBuilders.idsQuery(types).addIds((String)value);
 			else if(field.equals(Heading.SEARCH)) comparison = QueryBuilders.queryStringQuery((String)value);
 			else if(value instanceof String) comparison = queryForString(field, (String)value);
 			else comparison = QueryBuilders.termQuery(field, value);
-		}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN_OR_EQUAL){
+		}else if(compareExp.getType() == ComparisonExpressionType.GREATER_THAN_OR_EQUAL){
 			comparison = QueryBuilders.rangeQuery(field).from(value);
-		}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN_OR_EQUAL){
+		}else if(compareExp.getType() == ComparisonExpressionType.LESS_THAN_OR_EQUAL){
 			comparison = QueryBuilders.rangeQuery(field).to(value);
-		}else if(compareExp.getType() == ComparisonExpression.Type.GREATER_THAN){
+		}else if(compareExp.getType() == ComparisonExpressionType.GREATER_THAN){
 			comparison = QueryBuilders.rangeQuery(field).gt(value);
-		}else if(compareExp.getType() == ComparisonExpression.Type.LESS_THAN){
+		}else if(compareExp.getType() == ComparisonExpressionType.LESS_THAN){
 			comparison = QueryBuilders.rangeQuery(field).lt(value);
-		}else if(compareExp.getType() == ComparisonExpression.Type.NOT_EQUAL){
+		}else if(compareExp.getType() == ComparisonExpressionType.NOT_EQUAL){
 			if(field.equals(Heading.ID)){
 				state.addException("Matching document _id using '<>' is not supported");
 				return null;
 			}
-			comparison = QueryBuilders.notQuery(QueryBuilders.termQuery(field, value));
+			comparison = QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery(field, value));
 		};
 		if(fat.getFieldType() == Types.REF) 
 			return new QueryWrapper( comparison, field.split("\\.")[0]);
@@ -226,8 +206,8 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		if(e instanceof DereferenceExpression){
 			// parse columns like 'reference.field'
 			return SelectParser.visitDereferenceExpression((DereferenceExpression)e);
-		}else if (e instanceof QualifiedNameReference){
-			return ((QualifiedNameReference)e).getName().toString();
+		}else if (e instanceof Identifier){
+			return ((Identifier)e).getName();
 		} else return e.toString();
 	}
 	
@@ -334,21 +314,21 @@ public class WhereParser extends AstVisitor<QueryWrapper, QueryState>{
 		return name;
 	}
 	
-	private class FieldAndType{
+	private static class FieldAndType{
 		
 		private String fieldName;
 		private int fieldType;
 		
-		public FieldAndType(String fieldName, int fieldType) {
+		FieldAndType(String fieldName, int fieldType) {
 			this.fieldName = fieldName;
 			this.fieldType = fieldType;
 		}
 
-		public String getFieldName() {
+		String getFieldName() {
 			return fieldName;
 		}
 
-		public int getFieldType() {
+		int getFieldType() {
 			return fieldType;
 		}
 	}

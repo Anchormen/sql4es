@@ -11,12 +11,12 @@ import org.elasticsearch.test.ESIntegTestCase.Scope;
 import org.junit.Test;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class SubqueryIT extends Sql4EsBase {
+public class SubqueryITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 	
-	public SubqueryIT() throws Exception {
+	public SubqueryITest() throws Exception {
 		super();
 	}
 	

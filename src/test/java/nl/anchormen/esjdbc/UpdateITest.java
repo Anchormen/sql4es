@@ -6,12 +6,12 @@ import java.sql.Statement;
 
 import org.junit.Test;
 
-public class UpdateIT extends Sql4EsBase {
+public class UpdateITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testtype";
 	
-	public UpdateIT() throws Exception{
+	public UpdateITest() throws Exception{
 		super();
 	}
 

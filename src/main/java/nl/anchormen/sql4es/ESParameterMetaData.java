@@ -15,7 +15,7 @@ public class ESParameterMetaData implements ParameterMetaData{
 	private Object[] sqlAndParams;
 	
 	public ESParameterMetaData(Object[] sqlAndParams) {
-		this.sqlAndParams = sqlAndParams;
+		this.sqlAndParams = sqlAndParams.clone();
 	}
 	
 	@Override

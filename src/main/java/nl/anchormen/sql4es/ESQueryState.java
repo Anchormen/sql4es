@@ -3,11 +3,9 @@ package nl.anchormen.sql4es;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
+import nl.anchormen.sql4es.model.*;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -21,10 +19,6 @@ import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 
 import nl.anchormen.sql4es.jdbc.ESStatement;
-import nl.anchormen.sql4es.model.Column;
-import nl.anchormen.sql4es.model.Heading;
-import nl.anchormen.sql4es.model.OrderBy;
-import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.Column.Operation;
 import nl.anchormen.sql4es.model.expression.IComparison;
 import nl.anchormen.sql4es.parse.se.SearchAggregationParser;
@@ -92,9 +86,23 @@ public class ESQueryState{
 		if(this.esResponse != null && this.esResponse.getScrollId() != null){
 			client.prepareClearScroll().addScrollId(this.esResponse.getScrollId()).execute();
 		}
-		this.request = client.prepareSearch(indices);
+		// ToDo: Check indices after parse
+
 		Map<String, Map<String, Integer>> esInfo = (Map<String, Map<String, Integer>>)Utils.getObjectProperty(props, Utils.PROP_TABLE_COLUMN_MAP);
 		ParseResult parseResult =  parser.parse(sql, query, maxRowsRS, this.statement.getConnection().getClientInfo(), esInfo);
+		List<String> sqlIndices = new ArrayList<>();
+		//List<String> types = new ArrayList<>();
+		for (QuerySource source : parseResult.getSources()) {
+		    if (source.getIndex() != null) {
+                sqlIndices.add(source.getIndex());
+            }
+            //types.add(source.getSource());
+        }
+        if (sqlIndices.isEmpty()) {
+            sqlIndices.addAll(Arrays.asList(indices));
+        }
+        this.request = client.prepareSearch(sqlIndices.toArray(new String[0]));
+
 		buildQuery(request, parseResult);
 		this.heading = parseResult.getHeading();
 		having = parseResult.getHaving();
@@ -102,12 +110,13 @@ public class ESQueryState{
 		this.limit = parseResult.getLimit();
 		
 		// add highlighting
-		for(Column column : heading.columns()){
+		// ToDo: fix highlighting
+/*		for(Column column : heading.columns()){
 			if(column.getOp() == Operation.HIGHLIGHT){
 				request.addHighlightedField(column.getColumn(), Utils.getIntProp(props, Utils.PROP_FRAGMENT_SIZE, 100), 
 						Utils.getIntProp(props, Utils.PROP_FRAGMENT_NUMBER, 1));
 			}
-		}
+		}*/
 	}
 	
 	/**
@@ -233,14 +242,14 @@ public class ESQueryState{
 			// parse plain document hits
 			long total = esResponse.getHits().getTotalHits();
 			if(limit > 0) total = Math.min(total, limit);
-			ESResultSet rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, null);
+			ESResultSet rs = hitParser.parse(esResponse.getHits(), this.statement, this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, null);
 			
 			while(rs.rowCount() < Math.min(maxRowsRS, rs.getTotal() - rs.getOffset())){
 				// keep adding data to the resultset as long as there are more results available
 				esResponse = client.prepareSearchScroll(esResponse.getScrollId())
 						.setScroll(new TimeValue(Utils.getIntProp(props, Utils.PROP_SCROLL_TIMEOUT_SEC, 60)*1000))
 						.execute().actionGet();
-				rs = hitParser.parse(esResponse.getHits(), this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, rs);
+				rs = hitParser.parse(esResponse.getHits(), this.statement, this.heading, total, Utils.getIntProp(props, Utils.PROP_DEFAULT_ROW_LENGTH, 1000), useLateral, 0, rs);
 				// make sure the resultset does not contain more results than requested 
 				rs.setTotal(Math.min(esResponse.getHits().getTotalHits(), limit>0 ? limit : esResponse.getHits().getTotalHits()));
 			}			

@@ -17,9 +17,9 @@ import org.junit.Test;
  *
  */
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class DatabaseMetadataIT extends Sql4EsBase {
+public class DatabaseMetadataITest extends Sql4EsBase {
 	
-	public DatabaseMetadataIT() throws Exception {
+	public DatabaseMetadataITest() throws Exception {
 		super();
 	}
 
@@ -57,51 +57,51 @@ public class DatabaseMetadataIT extends Sql4EsBase {
 	
 	@Test
 	public void testReadingTables() throws Exception{
-		createIndexTypeWithDocs("index1", "mytype", true, -1);
+		createIndexTypeWithDocs("index3", "mytype", true, -1);
 		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/index?test");
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "index1", null, null);
+		ResultSet rs = md.getTables(null, "index3", null, null);
 		int count = 0;
 		while(rs.next()){
 			count++;
 		}
-		assertEquals(3, count);
+		assertEquals(2, count);
 	}
-	
+
 	@Test
 	public void testReadingColumnsFlat() throws Exception{
-		createIndexTypeWithDocs("index1", "mytype", true, -1);
+		createIndexTypeWithDocs("index4", "mytype", true, -1);
 		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/index?test");
 		DatabaseMetaData md = conn.getMetaData();
 		
-		ResultSet rs = md.getColumns(null, "index1", null, null);
+		ResultSet rs = md.getColumns(null, "index4", null, null);
 		int count = 0;
 		while(rs.next()){
 			count++;
 		}
-		assertEquals(18, count);
+		assertEquals(15, count);
 		
 		// reading empty type
-		rs = md.getColumns(null, "index1", "_default_", "%");
+		rs = md.getColumns(null, "index4", "_default_", "%");
 		count = 0;
 		while(rs.next()){
 			count++;
 		}
-		assertEquals(3, count);
+		assertEquals(0, count);
 	}
 
 	@Test
 	public void testReadingColumnsNested() throws Exception{
-		String index = "index2";
+		String index = "index5";
 		String type = "type";
 		createIndexTypeWithDocs(index, type, true, 1 , 2);
 		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test");
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getColumns(null, "index2", null, null);
+		ResultSet rs = md.getColumns(null, "index5", null, null);
 		int count = 0;
 		while(rs.next()){
 			count++;
 		}
-		assertEquals(38, count);
+		assertEquals(35, count);
 	}
 }

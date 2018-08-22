@@ -14,12 +14,12 @@ import org.junit.Test;
 import nl.anchormen.sql4es.model.Utils;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class NestedSelectsIT extends Sql4EsBase {
+public class NestedSelectsITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 	
-	public NestedSelectsIT() throws Exception {
+	public NestedSelectsITest() throws Exception {
 		super();
 	}
 

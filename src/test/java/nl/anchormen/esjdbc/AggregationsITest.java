@@ -8,12 +8,12 @@ import java.sql.Types;
 
 import org.junit.Test;
 
-public class AggregationsIT extends Sql4EsBase {
+public class AggregationsITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 	
-	public AggregationsIT() throws Exception {
+	public AggregationsITest() throws Exception {
 		super();
 	}
 	
@@ -101,7 +101,7 @@ public class AggregationsIT extends Sql4EsBase {
 		createIndexTypeWithDocs(index, type, true, 100, 1);
 		
 		Statement st = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test").createStatement();
-		ResultSet rs = st.executeQuery("select bool, count(*), max(intNum), min(floatNum), avg(doubleNum) from "+type+" GROUP BY bool");
+		ResultSet rs = st.executeQuery("select bool, count(*), max(intNum) as x, min(floatNum), avg(doubleNum) from "+type+" GROUP BY bool");
 		ResultSetMetaData rsm = rs.getMetaData();
 		assertEquals(5, rsm.getColumnCount());
 		assertEquals(Types.BOOLEAN, rsm.getColumnType(1));
@@ -109,6 +109,7 @@ public class AggregationsIT extends Sql4EsBase {
 		assertEquals(Types.INTEGER, rsm.getColumnType(3));
 		assertEquals(Types.FLOAT, rsm.getColumnType(4));
 		assertEquals(Types.DOUBLE, rsm.getColumnType(5));
+
 		int count = 0;
 		while(rs.next()){
 			count++;
@@ -165,6 +166,7 @@ public class AggregationsIT extends Sql4EsBase {
 		st.close();
 	}
 	
+
 	@Test
 	public void testGroupByWithWhereAndHaving() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 100, 1);
@@ -441,4 +443,5 @@ public class AggregationsIT extends Sql4EsBase {
 		assertEquals(100, count);
 		st.close();
 	}
+
 }

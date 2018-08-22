@@ -1,6 +1,7 @@
 package nl.anchormen.sql4es.parse.se;
 
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,7 +11,7 @@ import java.util.Map;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.highlight.HighlightField;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 
 import nl.anchormen.sql4es.ESArray;
 import nl.anchormen.sql4es.ESResultSet;
@@ -37,21 +38,21 @@ public class SearchHitParser {
 	/**
 	 * Parses the SearchHits portion of an elasticsearch search result.
 	 * @param hits
-	 * @param rs
+	 * @param head
 	 * @throws SQLException 
 	 */
-	public ESResultSet parse(SearchHits hits, Heading head, long total, int rowLength, boolean useLateral, long offset, ESResultSet previous) throws SQLException{
+	public ESResultSet parse(SearchHits hits, Statement statement, Heading head, long total, int rowLength, boolean useLateral, long offset, ESResultSet previous) throws SQLException{
 		Map<String, Heading> headMap = buildHeaders(head);
 		
 		ESResultSet rs;
 		if(previous != null){
 			rs = previous;
 		}else{
-			rs = new ESResultSet(head, (int)total, rowLength);
+			rs = new ESResultSet(statement, head, (int)total, rowLength);
 			rs.setOffset((int)offset);
 		}
 		for(SearchHit hit : hits){
-			this.parse(hit.getSource(), hit, rs, useLateral, "", headMap);
+			this.parse(hit.getSourceAsMap(), statement, hit, rs, useLateral, "", headMap);
 		}
 		
 		if(useLateral){
@@ -85,8 +86,8 @@ public class SearchHitParser {
 				if(parentAndKey == null) continue;
 				Heading subH = headingIndex.get(parentAndKey[0]);
 				if(subH == null){
-					for(String key : headingIndex.keySet()){
-						if(parentAndKey[0].startsWith(key) && headingIndex.get(key).hasAllCols()) continue col;
+					for(Map.Entry<String,Heading> entry : headingIndex.entrySet()){
+						if(parentAndKey[0].startsWith(entry.getKey()) && entry.getValue().hasAllCols()) continue col;
 					}
 					subH = new Heading();
 					headingIndex.put(parentAndKey[0], subH);
@@ -128,23 +129,24 @@ public class SearchHitParser {
 	 * @throws SQLException 
 	 */
 	@SuppressWarnings("unchecked")
-	private void parse(Map<String, ?> source, SearchHit hit, ESResultSet rs, boolean explode, String parent, Map<String, Heading> headMap) throws SQLException{
+	private void parse(Map<String, ?> source, Statement statement, SearchHit hit, ESResultSet rs, boolean explode, String parent, Map<String, Heading> headMap) throws SQLException{
 		Heading head = rs.getHeading();
 		List<Object> row = rs.getNewRow();
-		if(hit != null) addIdIndexAndType(hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), hit.getHighlightFields(), head, row);
+		if(hit != null) addIdIndexAndType(hit.getId(), hit.getIndex(), hit.getType(), hit.getScore(), null/*hit.getHighlightFields()*/ , head, row);
 		if(source == null) return; // just return if source was not stored!
-		for(String key : source.keySet()){
-			String fullKey = parent.length()>0 ? parent+"."+key : key;
+		for(Map.Entry<String, ?> entry : source.entrySet()){
+			String key = entry.getKey();
+			String fullKey = parent.length()>0 ? parent+"."+ key : key;
 
 			if(!headMap.containsKey(fullKey) && !head.hasAllCols()) continue;
 			
-			if( source.get(key) instanceof Map ){
-				parseMapIntoResultSet(key, head, row, explode, fullKey, headMap, (Map<String, ?>)source.get(key));
-			}else if(source.get(key) instanceof List) {
-				List<Object> list = (List<Object>)source.get(key);
+			if( entry.getValue() instanceof Map ){
+				parseMapIntoResultSet(key, statement, head, row, explode, fullKey, headMap, (Map<String, ?>)entry.getValue());
+			}else if(entry.getValue() instanceof List) {
+				List<Object> list = (List<Object>)entry.getValue();
 				if(list.size() > 0){
 					if(list.get(0) instanceof Map){
-						parseMapIntoResultSet(key, head, row, explode, fullKey, headMap, list.toArray());
+						parseMapIntoResultSet(key, statement, head, row, explode, fullKey, headMap, list.toArray());
 					}else{
 						if(head.hasLabel(key)){
 							Column s = head.getColumnByLabel(key);
@@ -163,7 +165,7 @@ public class SearchHitParser {
 					}
 				}
 			}else{
-				addValueToRow(key, source.get(key), head, row);
+				addValueToRow(key, entry.getValue(), head, row);
 			}
 		}
 		if(explode){
@@ -179,7 +181,7 @@ public class SearchHitParser {
 	 * Explodes any nested objects within the provided row. This produces multiple rows, each
 	 * with a different combination of nested information.
 	 * @param row
-	 * @param heading
+	 * @param head
 	 * @return
 	 * @throws SQLException 
 	 */
@@ -232,11 +234,11 @@ public class SearchHitParser {
 
 	/**
 	 * Adds _id, _index and/or _type to the current row
-	 * @param idIndexTypeScore = String[]{_id, _index, _type}
+	// * @param idIndexTypeScore = String[]{_id, _index, _type}
 	 * @param head
 	 * @param row
 	 */
-	private void addIdIndexAndType(String id, String index, String type, Float score, Map<String, HighlightField> highlights, Heading head, List<Object> row){
+	private void addIdIndexAndType(String id, String index, String type, Float score, Map<String, HighlightBuilder.Field> highlights, Heading head, List<Object> row){
 		if(id != null && head.hasAllCols() || head.hasLabel(Heading.ID)){
 			row.set( head.getColumnByLabel(Heading.ID).getIndex(), id);
 		}
@@ -249,7 +251,7 @@ public class SearchHitParser {
 		if(score != null && head.hasLabel(Heading.SCORE)){
 			row.set( head.getColumnByLabel(Heading.SCORE).getIndex(), score);
 		}
-		if(highlights != null){
+/*		if(highlights != null){
 			for(String field : highlights.keySet()){
 				Column col = head.getColumnByNameAndOp(field, Operation.HIGHLIGHT);
 				if(col == null) continue;
@@ -257,7 +259,7 @@ public class SearchHitParser {
 				for(Text fragment : highlights.get(field).getFragments()) fragments.add(fragment.toString());
 				row.set(col.getIndex(), new ESArray(fragments));
 			}
-		}
+		}*/
 	}
 	
 	/**
@@ -270,7 +272,11 @@ public class SearchHitParser {
 	private void addValueToRow(String key, Object value, Heading heading, List<Object> row){
 		if(heading.hasLabel(key)){
 			Column col = heading.getColumnByLabel(key);
-			row.set(col.getIndex(), value);
+/*			if (col.getSqlType() == Types.TIMESTAMP) {
+
+			} else {*/
+				row.set(col.getIndex(), value);
+/*			}*/
 		}else if(heading.hasAllCols()){
 			int type = Heading.getTypeIdForObject(value);
 			Column newCol = new Column(key).setSqlType(type);
@@ -283,21 +289,21 @@ public class SearchHitParser {
 	 * Parses the provided set of nested Objects (map<String, ?> ) into an ResultSet which is 
 	 * added to the row.
 	 * @param key
-	 * @param value
+	 //* @param value
 	 * @param heading
 	 * @param row
 	 * @throws SQLException 
 	 */
 	@SuppressWarnings("unchecked")
-	private void parseMapIntoResultSet(String key, Heading heading, List<Object> row, boolean explode, String parent, Map<String, Heading> headMap, Object... nestedObjects) throws SQLException{
+	private void parseMapIntoResultSet(String key, Statement statement, Heading heading, List<Object> row, boolean explode, String parent, Map<String, Heading> headMap, Object... nestedObjects) throws SQLException{
 		Heading nestedHeading = headMap.get(parent);
 		if(nestedHeading == null) {
 			nestedHeading = new Heading().setAllColls(true);
 			headMap.put(parent, nestedHeading);
 		}
-		ESResultSet nestedRs = new ESResultSet(nestedHeading, nestedObjects.length, 1000);
+		ESResultSet nestedRs = new ESResultSet(statement, nestedHeading, nestedObjects.length, 1000);
 		for(Object object : nestedObjects){
-			parse((Map<String, ?>)object, null, nestedRs, explode, parent, headMap);
+			parse((Map<String, ?>)object, statement, null, nestedRs, explode, parent, headMap);
 		}
 		Column col = heading.getColumnByLabel(key);
 		if(col == null){

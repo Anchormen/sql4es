@@ -8,7 +8,6 @@ import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Literal;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression;
-import com.facebook.presto.sql.tree.LogicalBinaryExpression.Type;
 
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
@@ -19,7 +18,7 @@ import nl.anchormen.sql4es.model.expression.SimpleComparison;
 
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NotExpression;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.Identifier;
 import com.facebook.presto.sql.tree.StringLiteral;
 
 /**
@@ -34,9 +33,9 @@ public class HavingParser extends AstVisitor<IComparison, QueryState>{
 	protected IComparison visitExpression(Expression node, QueryState state) {
 		if( node instanceof LogicalBinaryExpression){
 			LogicalBinaryExpression boolExp = (LogicalBinaryExpression)node;
-			IComparison left = boolExp.getLeft().accept(this, state);
-			IComparison right = boolExp.getRight().accept(this, state);
-			return new BooleanComparison(left, right, boolExp.getType() == Type.AND);
+			IComparison left = process(boolExp.getLeft(), state);
+			IComparison right = process(boolExp.getRight(), state);
+			return new BooleanComparison(left, right, boolExp.getType() == LogicalBinaryExpression.Type.AND);
 		}else if( node instanceof ComparisonExpression){
 			ComparisonExpression compareExp = (ComparisonExpression)node;
 			Column column = new SelectParser().visitExpression(compareExp.getLeft(), state);
@@ -59,13 +58,13 @@ public class HavingParser extends AstVisitor<IComparison, QueryState>{
 				return new SimpleComparison(leftCol, compareExp.getType(), (Number)value);
 			
 				// right hand side refers to another column 	
-			} else if(compareExp.getRight() instanceof DereferenceExpression || compareExp.getRight() instanceof QualifiedNameReference){
+			} else if(compareExp.getRight() instanceof DereferenceExpression || compareExp.getRight() instanceof Identifier){
 				String col2;
 				if(compareExp.getLeft() instanceof DereferenceExpression){
 					// parse columns like 'reference.field'
 					col2 = SelectParser.visitDereferenceExpression((DereferenceExpression)compareExp.getRight());
 				}else{
-					col2 = ((QualifiedNameReference)compareExp.getRight()).getName().toString();
+					col2 = ((Identifier)compareExp.getRight()).getName(); //.getValue();
 				}
 				col2 = Heading.findOriginal(state.originalSql(), col2, "having.+", "\\W");
 				Column rightCol = state.getHeading().getColumnByLabel(col2);

@@ -30,9 +30,9 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.shield.ShieldPlugin;
-import org.elasticsearch.test.ESIntegTestCase;
+import org.elasticsearch.common.transport.TransportAddress;
+//import org.elasticsearch.test.ESIntegTestCase;
+import org.elasticsearch.common.xcontent.XContentElasticsearchExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,12 +56,14 @@ public class ESConnection implements Connection{
 	private Client client;
 	private boolean active = true;
 	private int timeout = Integer.MAX_VALUE;
+    private int level = ESConnection.TRANSACTION_NONE;
 	
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private boolean autoCommit = false;
 	private boolean readOnly = true;
 	private List<ESStatement> statements = new ArrayList<ESStatement>();
 
+	private XContentElasticsearchExtension xc = new XContentElasticsearchExtension();
 	/**
 	 * Builds the es {@link Client} using the provided parameters. 
 	 * @param host
@@ -90,30 +92,43 @@ public class ESConnection implements Connection{
 	 * @throws SQLException
 	 */
 	private Client buildClient() throws SQLException {
-		if(props.containsKey("test")){ // used for integration tests
+		/*if(props.containsKey("test")){ // used for integration tests
 			return ESIntegTestCase.client();
-		}else try {
-			Settings.Builder settingsBuilder = Settings.settingsBuilder();
-			for(Object key : this.props.keySet()){
-				settingsBuilder.put(key, this.props.get(key));
-			}
+		}else*/ try {
+			Properties properties = new Properties();
+
+            properties.put("client.type", "transport");
+            properties.put("http.type.default", "netty4");
+            properties.put("network.server", "false");
+            properties.put("node.name", "_client_");
+            properties.put("transport.features.transport_client", "true");
+            properties.put("transport.ping_schedule", "5s");
+            properties.put("transport.type.default", "netty4");
+
 			if(props.containsKey("cluster.name")){
-				settingsBuilder.put("request.headers.X-Found-Cluster", props.get("cluster.name"));
+				properties.put("request.headers.X-Found-Cluster", props.get("cluster.name"));
+			} else {
+                properties.put("client.transport.ignore_cluster_name", "true");
+                properties.put("cluster.name", "elasticsearch");
 			}
-			if(props.containsKey("ssl")){
+
+/*			if(props.containsKey("ssl")){
 				settingsBuilder.put("shield.transport.ssl", true);
-			}
-			
-			Settings settings = settingsBuilder.build();
-			TransportClient client = TransportClient.builder().settings(settings).addPlugin(ShieldPlugin.class).build()
-				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+			}*/
+
+            Settings.Builder builder = Settings.builder();
+            properties.forEach((k, v) -> builder.put(k.toString(), v.toString()));
+            Settings settings = builder.build();
+
+            TransportClient client = new PreBuiltTransportClient(settings);/*.addPlugin(ShieldPlugin.class)*/
+            client.addTransportAddress(new TransportAddress(InetAddress.getByName(host), port));
 			
 			// add additional hosts if set in URL query part
 			if(this.props.containsKey("es.hosts"))
 				for(String hostPort : this.props.getProperty("es.hosts").split(",")){
 					String newHost = hostPort.split(":")[0].trim();
 					int newPort = (hostPort.split(":").length > 1 ? Integer.parseInt(hostPort.split(":")[1]) : Utils.PORT);
-					client.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(newHost), newPort));
+					client.addTransportAddress(new TransportAddress(InetAddress.getByName(newHost), newPort));
 					logger.info("Adding additional ES host: "+hostPort);
 			}
 			
@@ -240,12 +255,12 @@ public class ESConnection implements Connection{
 
 	@Override
 	public void setTransactionIsolation(int level) throws SQLException {
-		 throw new SQLFeatureNotSupportedException(Utils.getLoggingInfo());
+        this.level = level;
 	}
 
 	@Override
 	public int getTransactionIsolation() throws SQLException {
-		return ESConnection.TRANSACTION_NONE;
+		return level;
 	}
 
 	@Override
@@ -287,9 +302,10 @@ public class ESConnection implements Connection{
 		this.props.put(Utils.PROP_TABLE_COLUMN_MAP, tableColumnInfo);
 		
 		Map<String, Class<?>> result = new HashMap<String, Class<?>>();
-		for(String type : tableColumnInfo.keySet()){
-			for(String field : tableColumnInfo.get(type).keySet()){
-				result.put(type+"."+field, Heading.getClassForTypeId(tableColumnInfo.get(type).get(field)));
+		for(Map.Entry<String,Map<String,Integer>> typeEntry : tableColumnInfo.entrySet()){
+			String type = typeEntry.getKey();
+			for(Map.Entry<String, Integer> entry : typeEntry.getValue().entrySet()){
+				result.put(type+"."+entry.getKey(), Heading.getClassForTypeId(entry.getValue()));
 			}
 		}
 		return result;

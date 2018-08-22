@@ -5,12 +5,19 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.elasticsearch.SpecialPermission;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.painless.PainlessPlugin;
+import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.test.ESIntegTestCase;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.elasticsearch.transport.Netty4Plugin;
 
 public class Sql4EsBase extends ESIntegTestCase {
 
@@ -51,7 +58,7 @@ public class Sql4EsBase extends ESIntegTestCase {
 				}
 			});
 			if(mapping == null) throw new IOException("Unable to read TestDocumentMapping.json");
-			client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
+			client().admin().indices().prepareCreate(index).addMapping(type, mapping, XContentType.JSON).get(); //.execute().actionGet();
 		}else{
 			createIndex(index);
 		}
@@ -72,7 +79,7 @@ public class Sql4EsBase extends ESIntegTestCase {
 				}
 			});
 			if(mapping == null) throw new IOException("Unable to read TestDocumentMapping.json");
-			client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
+			client().admin().indices().prepareCreate(index).addMapping(type, mapping, XContentType.JSON).get(); //.execute().actionGet();
 		}else{
 			createIndex(index);
 		}
@@ -106,6 +113,21 @@ public class Sql4EsBase extends ESIntegTestCase {
 			index(index, type, "doc_"+i, mapper.writeValueAsString(doc));
 		}
 		flush();
+	}
+
+	@Override
+	protected Settings nodeSettings(int nodeOrdinal) {
+		final Settings.Builder builder = Settings.builder().put(super.nodeSettings(nodeOrdinal));
+		return builder
+				.put(super.nodeSettings(nodeOrdinal))
+				.put("script.allowed_types", "inline")
+
+				.build();
+	}
+
+	@Override
+	protected Collection<Class<? extends Plugin>> nodePlugins() {
+		return Arrays.asList(Netty4Plugin.class, PainlessPlugin.class);
 	}
 	
 }

@@ -63,13 +63,14 @@ public class ESPreparedStatement extends ESStatement implements PreparedStatemen
 	
 	@Override
 	public ResultSet executeQuery() throws SQLException {
-		if(super.execute(this.buildSql())) return getResultSet();
+		if (super.execute(this.buildSql())) return getResultSet();
 		else return null;
 	}
 
 	@Override
 	public int executeUpdate() throws SQLException {
-		throw new SQLFeatureNotSupportedException(Utils.getLoggingInfo());
+        return super.executeUpdate(this.buildSql());
+	    /*		throw new SQLFeatureNotSupportedException(Utils.getLoggingInfo());*/
 	}
 
 	@Override
@@ -79,39 +80,39 @@ public class ESPreparedStatement extends ESStatement implements PreparedStatemen
 
 	@Override
 	public void setBoolean(int parameterIndex, boolean x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Boolean(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Boolean.valueOf(x);
 		
 	}
 
 	@Override
 	public void setByte(int parameterIndex, byte x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Byte(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Byte.valueOf(x);
 		
 	}
 
 	@Override
 	public void setShort(int parameterIndex, short x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Short(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Short.valueOf(x);
 	}
 
 	@Override
 	public void setInt(int parameterIndex, int x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Integer(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Integer.valueOf(x);
 	}
 
 	@Override
 	public void setLong(int parameterIndex, long x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Long(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Long.valueOf(x);
 	}
 
 	@Override
 	public void setFloat(int parameterIndex, float x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Float(x);		
+		this.sqlAndParams[(parameterIndex*2) - 1] = Float.valueOf(x);
 	}
 
 	@Override
 	public void setDouble(int parameterIndex, double x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Double(x);
+		this.sqlAndParams[(parameterIndex*2) - 1] = Double.valueOf(x);
 	}
 
 	@Override
@@ -138,12 +139,12 @@ public class ESPreparedStatement extends ESStatement implements PreparedStatemen
 
 	@Override
 	public void setTime(int parameterIndex, Time x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Long(x.getTime());
+		this.sqlAndParams[(parameterIndex*2) - 1] = Long.valueOf(x.getTime());
 	}
 
 	@Override
 	public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
-		this.sqlAndParams[(parameterIndex*2) - 1] = new Long(x.getTime());
+		this.sqlAndParams[(parameterIndex*2) - 1] = Long.valueOf(x.getTime());
 		
 	}
 

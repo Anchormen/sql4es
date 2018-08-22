@@ -13,6 +13,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.facebook.presto.sql.tree.*;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -30,28 +31,11 @@ import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilder;
 
 import com.carrotsearch.hppc.cursors.ObjectCursor;
 import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.tree.BooleanLiteral;
-import com.facebook.presto.sql.tree.ComparisonExpression;
-import com.facebook.presto.sql.tree.CreateTable;
-import com.facebook.presto.sql.tree.CreateTableAsSelect;
-import com.facebook.presto.sql.tree.CreateView;
-import com.facebook.presto.sql.tree.Delete;
-import com.facebook.presto.sql.tree.DoubleLiteral;
-import com.facebook.presto.sql.tree.DropTable;
-import com.facebook.presto.sql.tree.DropView;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.Insert;
-import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.Query;
-import com.facebook.presto.sql.tree.QueryBody;
-import com.facebook.presto.sql.tree.QuerySpecification;
-import com.facebook.presto.sql.tree.StringLiteral;
-import com.facebook.presto.sql.tree.TableElement;
-import com.facebook.presto.sql.tree.Values;
 
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
@@ -470,20 +454,27 @@ public class ESUpdateState {
 		sb.append("{");
 		boolean templatesAdded = false;
 		if(create.getProperties().size() >= 0){
-			Map<String, Expression> props = create.getProperties();
-			if(props.containsKey("dynamic_templates")){ 
-				sb.append("dynamic_templates:"+removeEnclosingQuotes( props.get("dynamic_templates").toString()));
-				templatesAdded = true;
-			}
+/*			List<Property> props = create.getProperties();
+			for (Property prop : props) {
+				if (prop.getName().getValue().equals("dynamic_templates")) {
+					sb.append("dynamic_templates:"+removeEnclosingQuotes( prop.getValue().toString()));
+					templatesAdded = true;
+				}
+			}*/
+            Map<String, Expression> props = create.getProperties();
+            if(props.containsKey("dynamic_templates")){
+                sb.append("dynamic_templates:"+removeEnclosingQuotes( props.get("dynamic_templates").toString()));
+                templatesAdded = true;
+            }
 			// add other 'index global' stuff
 		}
 		if(templatesAdded) sb.append(", ");
 		sb.append("properties:{");
 		List<TableElement> fields = create.getElements();
 		for(int i=0; i<fields.size(); i++){
-			TableElement field = fields.get(i);
+			ColumnDefinition field = (ColumnDefinition)fields.get(i);
 			if(field.getName().equals("_id") || field.getName().equals("_type")) continue; // skip protected fields
-			sb.append(field.getName()+":{"+field.getType()+"}");
+			sb.append("\""+field.getName()+"\":{"+field.getType().replaceAll(":","\":\"")+"}");
 			if(i<fields.size()-1) sb.append(", ");
 		}
 		sb.append("}}"); // close type and properties blocks
@@ -492,10 +483,10 @@ public class ESUpdateState {
 		// create index if it does not yet exist
 		boolean indexExists = client.admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists();
 		if(!indexExists){
-			CreateIndexResponse response = client.admin().indices().prepareCreate(index).addMapping(type, json).get();
+			CreateIndexResponse response = client.admin().indices().prepareCreate(index).addMapping(type, json, XContentType.JSON).get();
 			if(!response.isAcknowledged()) throw new SQLException("Table creation failed because database '"+index+"' could not be created");
 		}else{
-			PutMappingResponse response = client.admin().indices().preparePutMapping(index).setType(type).setSource(json).execute().actionGet();
+			PutMappingResponse response = client.admin().indices().preparePutMapping(index).setType(type).setSource(json, XContentType.JSON).get();
 			if(!response.isAcknowledged()) throw new SQLException("Table creation failed due to unknown reason");
 		}
 		this.statement.getConnection().getTypeMap(); // trigger a reload of the table&column set for the connection
@@ -518,13 +509,15 @@ public class ESUpdateState {
 	 * @throws SQLException
 	 */
 	public int execute(String sql, CreateTableAsSelect createAsSelect, String index) throws SQLException {
-		if(!createAsSelect.isWithData()) throw new SQLException("Not yet possible to create table as select without data (create emtpy table, "
+        throw new SQLException("Not yet supported");
+/*
+	    if(!createAsSelect.isWithData()) throw new SQLException("Not yet possible to create table as select without data (create emtpy table, "
 				+ "insert data and delete it will have the same effect");
 		// first create the index
 		SqlParser parser = new SqlParser();
 		int queryIdx = sql.toLowerCase().indexOf(" as ");
 		try{
-			String createSql = sql.substring(0, queryIdx)+" (_id String)" ;
+			String createSql = sql.substring(0, queryIdx)+" (_id \"type:keyword\")" ;
 			CreateTable create = (CreateTable)parser.createStatement(createSql);
 			this.execute(createSql, create, index);
 			
@@ -532,6 +525,7 @@ public class ESUpdateState {
 			throw sqle;
 		}catch(Exception e){
 			throw new SQLException("Unable to create table due to: "+e.getMessage(), e);
+
 		}
 		
 		// secondly add the documents from the query
@@ -540,6 +534,7 @@ public class ESUpdateState {
 		int res = this.execute(insertSql, insert, index);
 		this.statement.getConnection().getTypeMap(); // trigger a reload of the table&column set for the connection
 		return res;
+*/
 	}
 
 	/**

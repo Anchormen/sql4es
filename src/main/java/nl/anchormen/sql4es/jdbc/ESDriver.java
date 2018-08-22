@@ -8,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Map;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -100,8 +101,8 @@ public class ESDriver implements Driver{
 		Properties props = (Properties)parseURL(url, info)[3];
 		DriverPropertyInfo[] result = new DriverPropertyInfo[props.size()];
 		int index = 0;
-		for(Object key : props.keySet()){
-			result[index] = new DriverPropertyInfo((String)key, props.get(key).toString());
+		for(Map.Entry<Object,Object> entry : props.entrySet()){
+			result[index] = new DriverPropertyInfo((String)entry.getKey(), entry.getValue().toString());
 			index++;
 		}
 		return result;

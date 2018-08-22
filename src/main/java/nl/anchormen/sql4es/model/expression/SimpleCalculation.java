@@ -1,7 +1,6 @@
 package nl.anchormen.sql4es.model.expression;
 
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
-import com.facebook.presto.sql.tree.ArithmeticBinaryExpression.Type;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
 
 import nl.anchormen.sql4es.ESResultSet;
@@ -14,7 +13,7 @@ public class SimpleCalculation implements ICalculation {
 	private Number result = null;
 	private Sign sign = Sign.PLUS;
 	
-	public SimpleCalculation(ICalculation left, ICalculation right, Type type) {
+	public SimpleCalculation(ICalculation left, ICalculation right, ArithmeticBinaryExpression.Type type) {
 		this.left = left;
 		this.right = right;
 		this.type = type;

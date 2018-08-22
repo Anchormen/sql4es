@@ -7,11 +7,11 @@ import java.sql.Statement;
 
 import org.junit.Test;
 
-public class NotSupportedIT extends Sql4EsBase {
+public class NotSupportedITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	
-	public NotSupportedIT() throws Exception {
+	public NotSupportedITest() throws Exception {
 		super();
 	}
 	

@@ -10,12 +10,12 @@ import org.elasticsearch.test.ESIntegTestCase.Scope;
 import org.junit.Test;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class DeleteIT extends Sql4EsBase {
+public class DeleteITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 		
-	public DeleteIT() throws Exception {
+	public DeleteITest() throws Exception {
 		super();
 	}
 		
