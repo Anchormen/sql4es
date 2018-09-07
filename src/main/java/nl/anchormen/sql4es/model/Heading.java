@@ -61,9 +61,10 @@ public class Heading {
 			this.add(new Column(INDEX).setSqlType(Types.VARCHAR).setIndex(getColumnCount()).setTable(table, tableAlias));
 			this.add(new Column(TYPE).setSqlType(Types.VARCHAR).setIndex(getColumnCount()).setTable(table, tableAlias));
 			
-			for(String field : this.typeIndex.keySet()){
+			for(Map.Entry<String, Integer> entry : this.typeIndex.entrySet()){
+				String field = entry.getKey();
 				if(field.equals(ID) || field.equals(TYPE) || field.equals(INDEX)) continue;
-				this.add(new Column(field).setSqlType(typeIndex.get(field)).setTable(table, tableAlias));
+				this.add(new Column(field).setSqlType(entry.getValue()).setTable(table, tableAlias));
 			}
 		} else {
 			column.setIndex(this.getColumnCount());
@@ -146,8 +147,8 @@ public class Heading {
 	}
 
 	public Column getFirstColumnStartingWith(String prefix) {
-		for(String label : fieldIndex.keySet()){
-			if(label.startsWith(prefix)) return fieldIndex.get(label);
+		for(Map.Entry<String, Column> entry : fieldIndex.entrySet()){
+			if(entry.getKey().startsWith(prefix)) return entry.getValue();
 		}
 		return null;
 	}
@@ -304,7 +305,7 @@ public class Heading {
 			case Types.BIT : return Boolean.class;
 			case Types.BOOLEAN : return Boolean.class;
 			case Types.CHAR : return Character.class;
-			case Types.DATE : return java.sql.Date.class;
+			case Types.DATE : return java.util.Date.class;
 			case Types.DOUBLE : return Double.class;
 			case Types.FLOAT : return Float.class;
 			case Types.INTEGER : return Integer.class;
@@ -328,6 +329,8 @@ public class Heading {
 			return Types.BOOLEAN;
 		if (c instanceof Character)
 			return Types.CHAR;
+		if (c instanceof Timestamp)
+			return Types.TIMESTAMP;
 		if (c instanceof java.sql.Date)
 			return Types.DATE;
 		if (c instanceof java.util.Date)
@@ -346,8 +349,6 @@ public class Heading {
 			return Types.VARCHAR;
 		if (c instanceof Time)
 			return Types.TIME;
-		if (c instanceof Timestamp)
-			return Types.TIMESTAMP;
 		if (c instanceof Byte)
 			return Types.TINYINT;
 		if (c instanceof Byte[])

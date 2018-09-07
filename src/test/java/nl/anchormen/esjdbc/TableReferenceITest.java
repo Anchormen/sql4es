@@ -10,12 +10,12 @@ import org.elasticsearch.test.ESIntegTestCase.Scope;
 import org.junit.Test;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class TableReferenceIT extends Sql4EsBase {
+public class TableReferenceITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 	
-	public TableReferenceIT() throws Exception {
+	public TableReferenceITest() throws Exception {
 		super();
 	}
 

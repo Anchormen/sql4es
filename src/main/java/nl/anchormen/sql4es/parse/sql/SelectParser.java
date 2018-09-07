@@ -1,7 +1,6 @@
 package nl.anchormen.sql4es.parse.sql;
 
-import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
-import com.facebook.presto.sql.tree.ArithmeticUnaryExpression;
+import com.facebook.presto.sql.tree.*;
 import com.facebook.presto.sql.tree.ArithmeticUnaryExpression.Sign;
 
 import nl.anchormen.sql4es.ESQueryState;
@@ -14,18 +13,6 @@ import nl.anchormen.sql4es.model.expression.ColumnReference;
 import nl.anchormen.sql4es.model.expression.ICalculation;
 import nl.anchormen.sql4es.model.expression.SimpleCalculation;
 import nl.anchormen.sql4es.model.expression.SingleValue;
-
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.DoubleLiteral;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
-import com.facebook.presto.sql.tree.SelectItem;
-import com.facebook.presto.sql.tree.SingleColumn;
-import com.facebook.presto.sql.tree.StringLiteral;
-import com.facebook.presto.sql.tree.SubscriptExpression;
 
 /**
  * Parses the SELECT part of the SQL and is responsible to fill the {@link Heading} object within the passed {@link ESQueryState}.
@@ -41,10 +28,10 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	protected Object visitSelectItem(SelectItem node, QueryState state){
 		if(node instanceof SingleColumn){
 			SingleColumn sc = (SingleColumn)node;
-			Column column = (Column)sc.getExpression().accept(this, state);
+			Column column = (Column) process(sc.getExpression(), state);
 			if(column != null){
 				String alias = null;
-				if(sc.getAlias().isPresent()) alias = sc.getAlias().get();
+				if(sc.getAlias().isPresent()) alias = sc.getAlias().get()/*.getValue()*/;
 				column.setAlias(alias);
 				Column col2 = state.getHeading().getColumnByNameAndOp(column.getColumn(), column.getOp());
 				if(col2 != null){
@@ -71,8 +58,8 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	
 	@Override
 	protected Column visitExpression(Expression node, QueryState state){
-		if( node instanceof QualifiedNameReference){
-			return createColumn( ((QualifiedNameReference)node).getName().toString(), null, state, "select.+", ".+from");
+		if( node instanceof Identifier){
+			return createColumn( ((Identifier)node).getName()/*.getValue()*/, null, state, "select.+", ".+from");
 		}else if(node instanceof DereferenceExpression){
 			// parse columns like 'reference.field'
 			String column = visitDereferenceExpression((DereferenceExpression)node);
@@ -89,7 +76,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 			else if(fc.getArguments().get(0) instanceof DereferenceExpression)
 				column = visitDereferenceExpression((DereferenceExpression)fc.getArguments().get(0) );
 			else {
-				 column = ((QualifiedNameReference)fc.getArguments().get(0)).getName().toString();
+				 column = ((Identifier)fc.getArguments().get(0)).getName()/*.getValue()*/;
 			}
 			try{
 				return createColumn(column, Operation.valueOf(operator.trim().toUpperCase()), state, "select.+", ".+from");
@@ -115,9 +102,9 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	}
 	
 	public static String visitDereferenceExpression(DereferenceExpression node){
-		if(node.getBase() instanceof QualifiedNameReference) {
-			return ((QualifiedNameReference)node.getBase()).getName().toString()+"."+node.getFieldName();
-		}else return visitDereferenceExpression((DereferenceExpression)node.getBase())+"."+node.getFieldName();
+		if(node.getBase() instanceof Identifier) {
+			return ((Identifier)node.getBase()).getName()/*.getValue()*/+"."+node.getFieldName()/*.getValue()*/;
+		}else return visitDereferenceExpression((DereferenceExpression)node.getBase())+"."+node.getFieldName()/*.getValue()*/;
 	}
 	
 	/**
@@ -125,7 +112,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	 * @author cversloot
 	 *
 	 */
-	private class ArithmeticParser extends AstVisitor<ICalculation, QueryState>{
+	private static class ArithmeticParser extends AstVisitor<ICalculation, QueryState>{
 		
 		private SelectParser selectParser = new SelectParser();
 		
@@ -148,7 +135,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 				ArithmeticUnaryExpression unaryExp = (ArithmeticUnaryExpression)node;
 				Sign sign = unaryExp.getSign();
 				Expression value = unaryExp.getValue();
-				ICalculation calc = value.accept(this, state);
+				ICalculation calc = process(value, state);
 				calc.setSign(sign);
 				return calc;
 			}else if(node instanceof SubscriptExpression){
@@ -175,7 +162,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 					column = column.setVisible(false);
 					return new ColumnReference(column);
 				}
-			}else state.addException("Unknown expression '"+node.getClass().getName()+"' encountered in ArithmeticExpression"); 
+			}else state.addException("Unknown expression '"+node.getClass().getName()+"' encountered in ArithmeticExpression");
 			return null;
 		}
 	}
@@ -183,7 +170,7 @@ public class SelectParser extends AstVisitor<Object, QueryState>{
 	/**
 	 * Create's a Column for the provided name and list with tables. This 
 	 * @param name
-	 * @param tables
+	 * @param op
 	 * @return
 	 */
 	public static Column createColumn(String name, Operation op, QueryState state, String prefix, String suffix){

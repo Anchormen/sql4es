@@ -11,15 +11,16 @@ import org.elasticsearch.test.ESIntegTestCase.Scope;
 import org.junit.Test;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class ArithmeticsIT extends Sql4EsBase {
+public class ArithmeticsITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "testdocs";
 		
-	public ArithmeticsIT() throws Exception {
+	public ArithmeticsITest() throws Exception {
 		super();
 	}
 		
+
 	@Test
 	public void singleComputations() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10,2);
@@ -92,7 +93,8 @@ public class ArithmeticsIT extends Sql4EsBase {
 		}
 		assertEquals(1, count);
 	}
-	
+
+
 	
 	@Test
 	public void combinedComputations() throws Exception{

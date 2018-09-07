@@ -1,18 +1,29 @@
 package nl.anchormen.sql4es.parse.se;
 
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.bucket.filter.InternalFilter;
+import org.elasticsearch.search.aggregations.bucket.terms.LongTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.metrics.InternalNumericMetricsAggregation;
+import org.elasticsearch.search.aggregations.metrics.avg.InternalAvg;
 import org.elasticsearch.search.aggregations.metrics.cardinality.InternalCardinality;
 
 import nl.anchormen.sql4es.ESResultSet;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Utils;
 import nl.anchormen.sql4es.model.Column.Operation;
+import org.elasticsearch.search.aggregations.metrics.geobounds.InternalGeoBounds;
+import org.elasticsearch.search.aggregations.metrics.geocentroid.InternalGeoCentroid;
+import org.elasticsearch.search.aggregations.metrics.max.InternalMax;
+import org.elasticsearch.search.aggregations.metrics.min.InternalMin;
+import org.elasticsearch.search.aggregations.metrics.percentiles.Percentile;
+import org.elasticsearch.search.aggregations.metrics.sum.InternalSum;
+import org.elasticsearch.search.aggregations.metrics.valuecount.InternalValueCount;
 
 /**
  * Parses aggregation part of elasticsearch result. 
@@ -50,6 +61,12 @@ public class SearchAggregationParser {
 		if(!rs.getHeading().hasLabel(columnName)) throw new SQLException("Unable to identify column for aggregation named "+columnName);
 		Column aggCol = rs.getHeading().getColumnByLabel(columnName);
 		for(Terms.Bucket bucket : terms.getBuckets()){
+			if (bucket instanceof StringTerms.Bucket) {
+				aggCol.setSqlType(Types.VARCHAR);
+			} else if (bucket instanceof LongTerms.Bucket) {
+				aggCol.setSqlType(Types.TIMESTAMP);
+				//ToDO: chack Timestamp
+			}
 			boolean metricAggs = false;
 			List<Aggregation> aggs = bucket.getAggregations().asList();
 			if(aggs.size() == 0){
@@ -67,7 +84,27 @@ public class SearchAggregationParser {
 					String metricName = agg.getName();
 					if(!rs.getHeading().hasLabel(metricName)) throw new SQLException("Unable to identify column for aggregation named "+metricName);
 					Column metricCol = rs.getHeading().getColumnByLabel(metricName);
-					currentRow.set(metricCol.getIndex(), agg.getProperty("value"));
+					// ToDo: check it
+                    if (agg instanceof InternalAvg) {
+                        currentRow.set(metricCol.getIndex(), ((InternalAvg) agg).getValue());
+                    } else if (agg instanceof InternalCardinality) {
+                        currentRow.set(metricCol.getIndex(), ((InternalCardinality) agg).getValue());
+                    } else if (agg instanceof InternalMax) {
+                        currentRow.set(metricCol.getIndex(), ((InternalMax) agg).getValue());
+                    } else if (agg instanceof InternalMin) {
+                        currentRow.set(metricCol.getIndex(), ((InternalMin) agg).getValue());
+                    } else if (agg instanceof Percentile) {
+                        currentRow.set(metricCol.getIndex(), ((Percentile) agg).getValue());
+                    } else if (agg instanceof InternalSum) {
+                        currentRow.set(metricCol.getIndex(), ((InternalSum) agg).getValue());
+                    } else if (agg instanceof InternalValueCount) {
+                        currentRow.set(metricCol.getIndex(), ((InternalValueCount) agg).getValue());
+                    } else if (agg instanceof InternalNumericMetricsAggregation.SingleValue) {
+                        currentRow.set(metricCol.getIndex(), ((InternalNumericMetricsAggregation.SingleValue) agg).getValueAsString());
+                    } else {
+                        // ToDo: I don't know (
+                        currentRow.set(metricCol.getIndex(), agg.getName());
+                    }
 				}
 			}
 			if(metricAggs){

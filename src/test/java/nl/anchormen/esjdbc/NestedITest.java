@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.ESIntegTestCase;
 import org.elasticsearch.test.ESIntegTestCase.ClusterScope;
 import org.elasticsearch.test.ESIntegTestCase.Scope;
@@ -20,12 +21,12 @@ import org.junit.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class NestedIT extends ESIntegTestCase{
+public class NestedITest extends ESIntegTestCase{
 		
 	private String index = "testindex";
 	private String type = "testdocs";
 		
-	public NestedIT() throws Exception {
+	public NestedITest() throws Exception {
 		super();
 		Class.forName("nl.anchormen.sql4es.jdbc.ESDriver");
 	}
@@ -147,7 +148,7 @@ public class NestedIT extends ESIntegTestCase{
 			}
 		});
 		if(mapping == null) throw new IOException("Unable to read NestedDocMapping.json");
-		client().admin().indices().prepareCreate(index).addMapping(type, mapping).execute().actionGet();
+		client().admin().indices().prepareCreate(index).addMapping(type, mapping, XContentType.JSON).get();
 		ObjectMapper mapper = new ObjectMapper();
 		for(int i=0; i<count; i++){
 			index(index, type, "doc_"+i, mapper.writeValueAsString(new NestedDoc(i, depth)));

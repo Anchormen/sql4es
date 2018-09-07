@@ -7,18 +7,10 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Optional;
 
 import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.tree.CreateTable;
-import com.facebook.presto.sql.tree.CreateTableAsSelect;
-import com.facebook.presto.sql.tree.CreateView;
-import com.facebook.presto.sql.tree.Delete;
-import com.facebook.presto.sql.tree.DropTable;
-import com.facebook.presto.sql.tree.DropView;
-import com.facebook.presto.sql.tree.Explain;
-import com.facebook.presto.sql.tree.Insert;
-import com.facebook.presto.sql.tree.Query;
-import com.facebook.presto.sql.tree.Use;
+import com.facebook.presto.sql.tree.*;
 
 import nl.anchormen.sql4es.ESQueryState;
 import nl.anchormen.sql4es.ESResultSet;
@@ -26,6 +18,7 @@ import nl.anchormen.sql4es.ESUpdateState;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
+import nl.anchormen.sql4es.parse.sql.QueryParser;
 
 public class ESStatement implements Statement {
 
@@ -72,7 +65,7 @@ public class ESStatement implements Statement {
 			if(this.result != null) this.result.close();
 			Heading heading = new Heading();
 			heading.add(new Column("Explanation"));
-			ESResultSet rs = new ESResultSet(heading, 1, 1);
+			ESResultSet rs = new ESResultSet(queryState.getStatement(), heading, 1, 1);
 			List<Object> row = rs.getNewRow();
 			row.set(0, ex);
 			rs.add(row);

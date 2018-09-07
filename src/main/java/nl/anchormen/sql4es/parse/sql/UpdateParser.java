@@ -4,18 +4,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.BooleanLiteral;
-import com.facebook.presto.sql.tree.DoubleLiteral;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.Insert;
-import com.facebook.presto.sql.tree.Literal;
-import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.Row;
-import com.facebook.presto.sql.tree.StringLiteral;
-import com.facebook.presto.sql.tree.TimeLiteral;
-import com.facebook.presto.sql.tree.TimestampLiteral;
-import com.facebook.presto.sql.tree.Values;
+import com.facebook.presto.sql.tree.*;
 
 import nl.anchormen.sql4es.QueryState;
 import nl.anchormen.sql4es.model.Column;
@@ -33,8 +22,7 @@ public class UpdateParser extends AstVisitor<List<Object>, QueryState>{
 	 * Parses the Insert statement and returns the values as one list (even if multiple value sets were found). Columns
 	 * to be inserted are added to the provided heading
 	 * @param insert
-	 * @param updateState
-	 * @param heading
+	 * @param state
 	 * @return
 	 * @throws SQLException
 	 */

@@ -41,7 +41,7 @@ public class Column implements Comparable<Column>{
 			case COUNT_DISTINCT: sqlType = Types.BIGINT; break;
 			default: sqlType = Types.OTHER;
 		}
-		if(calculation != null) sqlType = Types.DOUBLE;
+		//if(calculation != null) sqlType = Types.DOUBLE;
 	}	
 	
 	public Column(String columnName) {

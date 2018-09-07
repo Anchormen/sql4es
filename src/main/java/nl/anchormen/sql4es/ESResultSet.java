@@ -42,6 +42,7 @@ public class ESResultSet implements ResultSet {
 
 	private List<List<Object>> rows = new ArrayList<List<Object>>();
 	private Heading heading;
+	private Statement statement;
 	private int cursor = -1;
 	private ESQueryState req;
 	private long total;
@@ -51,6 +52,7 @@ public class ESResultSet implements ResultSet {
 	public ESResultSet(ESQueryState req){
 		this.heading = req.getHeading();
 		this.req = req;
+		this.statement = req.getStatement();
 		this.total = 0;
 		this.defaultRowLength = req.getIntProp(Utils.PROP_DEFAULT_ROW_LENGTH, 1000);
 	}
@@ -60,10 +62,18 @@ public class ESResultSet implements ResultSet {
 		this.total = total;
 		this.defaultRowLength = defaultRowLength;
 	}
+
+	public ESResultSet(Statement statement, Heading heading, int total, int defaultRowLength){
+		this.heading = heading;
+		this.statement = statement;
+		this.total = total;
+		this.defaultRowLength = defaultRowLength;
+	}
 	
 	public ESResultSet(ESQueryState req, long total) {
 		this.heading = req.getHeading();
 		this.req = req;
+		this.statement = req.getStatement();
 		this.total = total;
 		this.defaultRowLength = req.getIntProp(Utils.PROP_DEFAULT_ROW_LENGTH, 1000);
 	}
@@ -369,7 +379,7 @@ public class ESResultSet implements ResultSet {
 		Object value = getForColumn(columnIndex);
 		if(value == null) return null;
 		int type = heading.getColumn(heading.getIndexForColumn(columnIndex)).getSqlType();
-		if(type == Types.DATE){
+		if(type == Types.DATE || type == Types.TIMESTAMP){
 			if(value instanceof String) return new Timestamp(getTimeFromString((String)value));
 			return new Timestamp(((java.util.Date)value).getTime());
 		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Timestamp but is "+value.getClass().getSimpleName());
@@ -650,7 +660,11 @@ public class ESResultSet implements ResultSet {
 
 	@Override
 	public int getFetchSize() throws SQLException {
-		return req.getMaxRows();
+		if (req != null) {
+			return req.getMaxRows();
+		} else {
+			return req.getIntProp(Utils.PROP_FETCH_SIZE, 1000);
+		}
 	}
 
 	@Override
@@ -905,7 +919,12 @@ public class ESResultSet implements ResultSet {
 
 	@Override
 	public Statement getStatement() throws SQLException {
-		return req.getStatement();
+		if (req != null) {
+			return req.getStatement();
+		} else {
+			//ToDO:
+			return this.statement;
+		}
 	}
 
 	@Override
@@ -1100,7 +1119,12 @@ public class ESResultSet implements ResultSet {
 
 	@Override
 	public boolean isClosed() throws SQLException {
-		return this.req.getStatement().isClosed();
+		if (this.req != null) {
+			return this.req.getStatement().isClosed();
+		} else {
+			return rows.isEmpty();
+		}
+
 	}
 
 	@Override
@@ -1346,11 +1370,11 @@ public class ESResultSet implements ResultSet {
 	 * @author cversloot
 	 *
 	 */
-	public class ResultRowComparator implements Comparator<List<Object>>{
+	public static class ResultRowComparator implements Comparator<List<Object>>{
 
-		public List<OrderBy> order;
+		List<OrderBy> order;
 		
-		public ResultRowComparator(List<OrderBy> order) {
+		ResultRowComparator(List<OrderBy> order) {
 			this.order = order;
 		}
 		
@@ -1360,14 +1384,14 @@ public class ESResultSet implements ResultSet {
 			for(OrderBy ob : order) try{
 				// order NULL values last
 				Object o1 = rr1.get(ob.getIndex());
-				if(o1 == null ) return ob.func() * 1;
+				if(o1 == null ) return ob.func();
 				Object o2 = rr2.get(ob.getIndex());
 				if(o2 == null )return ob.func() * -1;
 				
 				if(o1 instanceof String){
 					res = ((String)o1).compareTo((String)o2); 
 				}else if(o1 instanceof Number){
-					res = new Double(((Number)o1).doubleValue()).compareTo(new Double(((Number)o2).doubleValue()));
+					res = Double.compare(((Number) o1).doubleValue(), ((Number) o2).doubleValue());
 				}
 				if(res != 0) return ob.func() * res;
 			}catch(Exception e){

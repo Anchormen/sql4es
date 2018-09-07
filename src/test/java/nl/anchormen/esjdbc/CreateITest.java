@@ -19,21 +19,21 @@ import nl.anchormen.sql4es.model.Utils;
  * @author cversloot
  *
  */
-public class CreateIT extends Sql4EsBase {
+public class CreateITest extends Sql4EsBase {
 
 	private String index = "testindex";
 	private String type = "type";
 	
-	public CreateIT() throws Exception {
+	public CreateITest() throws Exception {
 		super();
 	}
-	/*
+
 	@Test
 	public void createSimple() throws Exception{
 		createIndex(index);
 		Connection conn = DriverManager.getConnection("jdbc:sql4es://localhost:9300/"+index+"?test");
 		Statement st = conn.createStatement();
-		boolean res = st.execute("CREATE TABLE simpletype (myString \"type:String, index:not_analyzed\", myInt \"type:Integer\", myDate \"type:date\")");
+		boolean res = st.execute("CREATE TABLE simpletype (myString \"type:keyword\", myInt \"type:integer\", myDate \"type:date\")");
 		assert(!res);
 		flush();
 		refresh();
@@ -41,7 +41,7 @@ public class CreateIT extends Sql4EsBase {
 		ResultSet rs = dmd.getTables(null, index, "simpletype",null);
 		int count = 0;
 		while(rs.next()) count++;
-		assertEquals(2, count);
+		assertEquals(1, count);
 		rs.close();
 		
 		res = st.execute("INSERT INTO simpletype (myString, myInt, myDate) "
@@ -66,6 +66,7 @@ public class CreateIT extends Sql4EsBase {
 	}
 	
 	
+/*
 	@Test
 	public void createAs() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10);
@@ -83,6 +84,7 @@ public class CreateIT extends Sql4EsBase {
 		assertEquals(13, rsm.getColumnCount());
 		st.close();
 	}
-	*/
+*/
+
 	
 }

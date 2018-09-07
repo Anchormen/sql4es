@@ -16,12 +16,12 @@ import org.junit.Test;
 import nl.anchormen.sql4es.model.Utils;
 
 @ClusterScope(scope=Scope.TEST, numDataNodes=1)
-public class SimpleSelectsIT extends Sql4EsBase {
+public class SimpleSelectsITest extends Sql4EsBase {
 	
 	private String index = "testindex";
 	private String type = "testdocs";
 	
-	public SimpleSelectsIT() throws Exception {
+	public SimpleSelectsITest() throws Exception {
 		super();
 	}
 	
@@ -67,9 +67,9 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		assertEquals(Types.BIGINT, rsm.getColumnType(3));
 		assertEquals(Types.BOOLEAN, rsm.getColumnType(4));
 		assertEquals(Types.OTHER, rsm.getColumnType(5));
-		assertEquals(Types.DOUBLE, rsm.getColumnType(6));
+		assertEquals(Types.FLOAT, rsm.getColumnType(6));
 		assertEquals(Types.BIGINT, rsm.getColumnType(7));
-		assertEquals(Types.DOUBLE, rsm.getColumnType(8));
+		assertEquals(Types.FLOAT, rsm.getColumnType(8));
 		assertEquals(Types.ARRAY, rsm.getColumnType(9));
 		assertEquals(Types.VARCHAR, rsm.getColumnType(10));
 		assertEquals(Types.OTHER, rsm.getColumnType(11));
@@ -229,7 +229,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		st.close();
 		pst.close();
 	}
-	
+
 	@Test
 	public void selectTextExact() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10);
@@ -361,7 +361,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			assertEquals(true, rs.getBoolean("bool"));
 		}
 		assertEquals(5, count);
-		
+/*
 		rs = st.executeQuery("select bool as B from "+type+" where bool = 0");
 		rsm = rs.getMetaData();
 		assertEquals(1, rsm.getColumnCount());
@@ -400,9 +400,9 @@ public class SimpleSelectsIT extends Sql4EsBase {
 			count++;
 			assertEquals(true, rs.getBoolean(1)); 
 		}
-		assertEquals(5, count);
+		assertEquals(5, count);*/
 		
-		rs = st.executeQuery("select bool from "+type+" where bool = False AND bool = 'True' ");
+		rs = st.executeQuery("select bool from "+type+" where bool = False AND bool = True ");
 		rsm = rs.getMetaData();
 		assertEquals(1, rsm.getColumnCount());
 		count = 0;
@@ -424,6 +424,7 @@ public class SimpleSelectsIT extends Sql4EsBase {
 		st.close();
 	}
 	
+
 	@Test
 	public void selectAndOr() throws Exception{
 		createIndexTypeWithDocs(index, type, true, 10);
@@ -591,5 +592,6 @@ public class SimpleSelectsIT extends Sql4EsBase {
 
 		st.close();
 	}
-		
+
+
 }

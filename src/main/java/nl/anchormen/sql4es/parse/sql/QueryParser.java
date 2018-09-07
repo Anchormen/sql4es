@@ -8,20 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.facebook.presto.sql.tree.*;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.Query;
-import com.facebook.presto.sql.tree.QueryBody;
-import com.facebook.presto.sql.tree.QuerySpecification;
-import com.facebook.presto.sql.tree.Relation;
-import com.facebook.presto.sql.tree.SelectItem;
-import com.facebook.presto.sql.tree.SortItem;
 
 import nl.anchormen.sql4es.model.BasicQueryState;
 import nl.anchormen.sql4es.model.Column;
@@ -61,7 +54,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	 * Builds the provided {@link SearchRequestBuilder} by parsing the {@link Query} using the properties provided.
 	 * @param sql the original sql statement
 	 * @param queryBody the Query parsed from the sql
-	 * @param searchReq the request to build
+	 * @param maxRows the request to build
 	 * @param props a set of properties to use in certain cases
 	 * @param tableColumnInfo mapping from available tables to columns and their types
 	 * @return an array containing [ {@link Heading}, {@link IComparison} having, List&lt;{@link OrderBy}&gt; orderings, Integer limit]
@@ -81,7 +74,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		}
 		throw new SQLException("The provided query does not contain a QueryBody");
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	@Override
 	protected ParseResult visitQuerySpecification(QuerySpecification node, Object obj){
@@ -96,7 +89,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		ParseResult subQuery = null;
 		
 		// check for distinct in combination with group by
-		if(node.getSelect().isDistinct() && !node.getGroupBy().isEmpty()){
+		if(node.getSelect().isDistinct() && node.getGroupBy().isPresent()){
 			state.addException("Unable to combine DISTINCT and GROUP BY within a single query");
 			return new ParseResult(state.getException());
 		};
@@ -116,7 +109,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		
 		// get columns to fetch (builds the header)
 		for(SelectItem si : node.getSelect().getSelectItems()){
-			si.accept(selectParser, state);
+			selectParser.process(si, state);
 		}
 		if(state.hasException()) return new ParseResult(state.getException());
 		boolean requestScore = heading.hasLabel("_score");
@@ -145,8 +138,8 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		if(state.hasException()) return new ParseResult(state.getException());
 		
 		// parse group by and create aggregations accordingly
-		if(node.getGroupBy() != null && node.getGroupBy().size() > 0){
-			aggregation = groupParser.parse(node.getGroupBy(), state);
+		if(node.getGroupBy() != null && node.getGroupBy().isPresent() && node.getGroupBy().get().getGroupingElements().size() > 0){
+			aggregation = groupParser.parse(node.getGroupBy().get().getGroupingElements(), state);
 		}else if(heading.aggregateOnly()){
 			if(state.isCountDistinct())
 				// create aggregation in case of COUNT DISTINCT
@@ -158,12 +151,12 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		
 		// parse Having (is executed client side after results have been fetched)
 		if(node.getHaving().isPresent()){
-			having = node.getHaving().get().accept(havingParser, state);
+			having = havingParser.process(node.getHaving().get(), state);
 		}
 
 		// parse ORDER BY
-		if(!node.getOrderBy().isEmpty()){
-			for(SortItem si : node.getOrderBy()){
+		if(node.getOrderBy().isEmpty()){
+			for(SortItem si : node.getOrderBy()/*.get().getSortItems()*/){
 				OrderBy ob = si.accept(orderOarser, state);
 				if(state.hasException()) return new ParseResult(state.getException());
 				orderings.add(ob);
@@ -199,7 +192,6 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	 * Gets the sources to query from the provided Relation. Parsed relations are put inside the state
 	 * @param relation
 	 * @param state
-	 * @param searchReq
 	 * @return if the set with relations contains the query cache identifier
 	 */
 	private SourcesResult getSources(Relation relation, BasicQueryState state){
@@ -208,7 +200,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		ParseResult subQueryInfo = null;
 		if(state.hasException()) return new SourcesResult(false, null);
 		if(sources.size() < 1) {
-			state.addException("Specify atleast one valid table to execute the query on!");
+			state.addException("Specify at least one valid table to execute the query on!");
 			return new SourcesResult(false, null);
 		}
 		for(int i=0; i<sources.size(); i++){
@@ -278,7 +270,7 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		sorts.addAll(top.getSorts());
 		boolean useCache = top.getUseCache() || nested.getUseCache();
 		QueryBuilder aggQuery = nested.getQuery();
-		AbstractAggregationBuilder agg = nested.getAggregation();
+		AggregationBuilder agg = nested.getAggregation();
 		IComparison having = nested.getHaving();
 		
 		Heading head = new Heading();
@@ -306,8 +298,8 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	
 	/**
 	 * Merges a top level aggregation query with an inner select
-	 * @param result
-	 * @param subQuery
+	 * @param top
+	 * @param nested
 	 * @return
 	 * @throws SQLException 
 	 */
@@ -320,8 +312,8 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		QueryBuilder query = top.getQuery();
 		if(query instanceof MatchAllQueryBuilder) query = nested.getQuery();
 		else if(!(nested.getQuery() instanceof MatchAllQueryBuilder)) query = QueryBuilders.boolQuery().must(top.getQuery()).must(nested.getQuery());
-		
-		AbstractAggregationBuilder agg = top.getAggregation();
+
+		AggregationBuilder agg = top.getAggregation();
 		IComparison having = top.getHaving();
 		Heading head = new Heading();
 		if(nested.getHeading().hasAllCols()){
@@ -352,7 +344,6 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	/**
 	 * Traverses a {@link ICalculation} tree to fix column references pointing to a nested query
 	 * @param calc
-	 * @param top
 	 * @param nested
 	 * @throws SQLException
 	 */
@@ -373,10 +364,10 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 	
 	/**
 	 * Gets SQL column types for the provided tables as a map from column name to java.sql.Types
-	 * @param tables
+	 * @param relations
 	 * @return
 	 */
-	public Map<String, Integer> typesForColumns(List<QuerySource> relations){
+	private Map<String, Integer> typesForColumns(List<QuerySource> relations){
 		HashMap<String, Integer> colType = new HashMap<String, Integer>();
 		colType.put(Heading.ID, Types.VARCHAR);
 		colType.put(Heading.TYPE, Types.VARCHAR);
@@ -388,11 +379,11 @@ public class QueryParser extends AstVisitor<ParseResult, Object>{
 		return colType;
 	}
 
-	private class SourcesResult {
-		public boolean useCache;
-		public ParseResult subQueryInfo;
+	private static class SourcesResult {
+		boolean useCache;
+		ParseResult subQueryInfo;
 		
-		public SourcesResult(boolean useCache, ParseResult subQueryInfo){
+		SourcesResult(boolean useCache, ParseResult subQueryInfo){
 			this.useCache = useCache;
 			this.subQueryInfo = subQueryInfo;
 		}

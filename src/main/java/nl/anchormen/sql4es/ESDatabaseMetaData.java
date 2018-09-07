@@ -1,12 +1,6 @@
 package nl.anchormen.sql4es;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.RowIdLifetime;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +8,8 @@ import java.util.Properties;
 import java.util.SortedMap;
 import java.util.regex.Pattern;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
@@ -27,6 +23,7 @@ import nl.anchormen.sql4es.jdbc.ESDriver;
 import nl.anchormen.sql4es.model.Column;
 import nl.anchormen.sql4es.model.Heading;
 import nl.anchormen.sql4es.model.Utils;
+import org.elasticsearch.index.engine.Engine;
 
 /**
  * Implementation of the {@link DatabaseMetaData} interface describing an Elasticsearch cluster. Conceptually a 
@@ -119,7 +116,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 
 	@Override
 	public String getDriverName() throws SQLException {
-		return new ESDriver().getClass().getName();
+		return ESDriver.class.getName();
 	}
 
 	@Override
@@ -780,6 +777,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
 					if(!Pattern.matches(tableNamePattern, type.value)) continue;
 					List<Object> row = result.getNewRow();
+					row.set(1, index.value);
 					row.set(2, type.value);
 					row.set(3, "TABLE");
 					result.add(row);
@@ -791,7 +789,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		if(lookForViews){
 			ImmutableOpenMap<String, List<AliasMetaData>> aliasMd = client.admin().indices().prepareGetAliases().get().getAliases();
 			for(ObjectCursor<String> key : aliasMd.keys()){
-				if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
+				if(schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, key.value)) continue;
 				for(AliasMetaData amd : aliasMd.get(key.value)){
 					List<Object> row = result.getNewRow();
 					row.set(1, amd.alias());
@@ -805,7 +803,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			if(result.getNrRows() <= 1){
 				for(ObjectCursor<String> key : aliasMd.keys()){
 					for(AliasMetaData amd : aliasMd.get(key.value)){
-						if(schemaPattern != null && schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
+						if(schemaPattern.length() > 0 && !Pattern.matches(schemaPattern, amd.alias())) continue;
 						List<Object> row = result.getNewRow();
 						row.set(1, key.value);
 						row.set(3, "VIEW");
@@ -837,7 +835,7 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 		for(String key : aliasAndIndices.keySet()){
 			List<Object> row = result.getNewRow();
 			row.set(0, key);
-			row.set(1,  aliasAndIndices.get(key).isAlias() ? "alias" : "index");
+			row.set(1, "elasticsearch" /* aliasAndIndices.get(key).isAlias() ? "alias" : "index"*/);
 			result.add(row);
 		}
 		return result;
@@ -912,18 +910,20 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 			ImmutableOpenMap<String, IndexMetaData> indices = client.admin().cluster()
 				    .prepareState().get().getState()
 				    .getMetaData().getIndices();
+			boolean found = false;
 			for(ObjectCursor<String> index : indices.keys()){
 				if(schemaPattern != null && !Pattern.matches(schemaPattern, index.value)) continue;
+				found = true;
 				for(ObjectCursor<String> type : indices.get(index.value).getMappings().keys()){
 					if(tableNamePattern != null && !Pattern.matches(tableNamePattern, type.value)) continue;
 					
 					// add _id, _type and _index fields
 					List<Object> row = result.getNewRow();
-					row.set(0, null);
-					row.set(1, null);
+					row.set(0, "elasticsearch");
+					row.set(1, index.value);
 					row.set(2, type.value);
 					row.set(3, "_id");
-					row.set(4, Heading.getTypeIdForObject(new String())); 
+					row.set(4, Heading.getTypeIdForObject(""));
 					row.set(5, "string"); 
 					row.set(11, "The document _id used by elasticsearch");
 					row.set(22, "YES");
@@ -931,11 +931,11 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					result.add(row);
 					
 					row = result.getNewRow();				
-					row.set(0, null);
-					row.set(1, null);
+					row.set(0, "elasticsearch");
+					row.set(1, index.value);
 					row.set(2, type.value);
 					row.set(3, "_type");
-					row.set(4, Heading.getTypeIdForObject(new String())); 
+					row.set(4, Heading.getTypeIdForObject(""));
 					row.set(5, "string");
 					row.set(11, "The type a record is part of");
 					row.set(22, "NO");
@@ -943,11 +943,11 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					result.add(row);
 					
 					row = result.getNewRow();				
-					row.set(0, null);
-					row.set(1, null);
+					row.set(0, "elasticsearch");
+					row.set(1, index.value);
 					row.set(2, type.value);
 					row.set(3, "_index");
-					row.set(4, Heading.getTypeIdForObject(new String())); 
+					row.set(4, Heading.getTypeIdForObject(""));
 					row.set(5, "string"); 
 					row.set(11, "The index a record is part of");
 					row.set(22, "NO");
@@ -956,8 +956,64 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 					
 					MappingMetaData typeMd = indices.get(index.value).getMappings().get(type.value);
 					if(typeMd != null && (Map)typeMd.getSourceAsMap().get("properties") != null){
-						addColumnInfo((Map)typeMd.getSourceAsMap().get("properties"), null, 0, type.value, result, columnNamePattern, lateral);
+						addColumnInfo((Map)typeMd.getSourceAsMap().get("properties"), null, 0, index.value, type.value, result, columnNamePattern, lateral);
 					}
+				}
+			}
+			if (!found) {
+				GetMappingsResponse response = client.admin().indices()
+						.prepareGetMappings(schemaPattern)
+						.execute().actionGet();
+				ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetaData>> mappings
+						= response.mappings();
+				for(ObjectCursor<String> index : mappings.keys()) {
+					if (schemaPattern != null && !Pattern.matches(schemaPattern, index.value)) continue;
+					for(ObjectCursor<String> type : mappings.get(index.value).keys()){
+						if(tableNamePattern != null && !Pattern.matches(tableNamePattern, type.value)) continue;
+
+						// add _id, _type and _index fields
+						List<Object> row = result.getNewRow();
+						row.set(0, "elasticsearch");
+						row.set(1, index.value);
+						row.set(2, type.value);
+						row.set(3, "_id");
+						row.set(4, Heading.getTypeIdForObject(""));
+						row.set(5, "string");
+						row.set(11, "The document _id used by elasticsearch");
+						row.set(22, "YES");
+						row.set(23, "YES");
+						result.add(row);
+
+						row = result.getNewRow();
+						row.set(0, "elasticsearch");
+						row.set(1, index.value);
+						row.set(2, type.value);
+						row.set(3, "_type");
+						row.set(4, Heading.getTypeIdForObject(""));
+						row.set(5, "string");
+						row.set(11, "The type a record is part of");
+						row.set(22, "NO");
+						row.set(23, "YES");
+						result.add(row);
+
+						row = result.getNewRow();
+						row.set(0, "elasticsearch");
+						row.set(1, index.value);
+						row.set(2, type.value);
+						row.set(3, "_index");
+						row.set(4, Heading.getTypeIdForObject(""));
+						row.set(5, "string");
+						row.set(11, "The index a record is part of");
+						row.set(22, "NO");
+						row.set(23, "YES");
+						result.add(row);
+
+						MappingMetaData typeMd = mappings.get(index.value).get(type.value);
+						if(typeMd != null && (Map)typeMd.getSourceAsMap().get("properties") != null){
+							addColumnInfo((Map)typeMd.getSourceAsMap().get("properties"), null, 0, index.value, type.value, result, columnNamePattern, lateral);
+						}
+					}
+
 				}
 			}
 		}catch(Exception e){
@@ -969,21 +1025,22 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	}
 
 	@SuppressWarnings("unchecked")
-	private int addColumnInfo(Map<String, Object> info, String parent, int nextIndex, String esType, ESResultSet result, 
+	private int addColumnInfo(Map<String, Object> info, String parent, int nextIndex, String esIndex, String esType, ESResultSet result,
 			String columnNamePattern, boolean lateral){
 		List<Object> row = result.getNewRow();				
-		for(String key : info.keySet()){
+		for(Map.Entry<String, Object> entry : info.entrySet()){
+			String key = entry.getKey();
 			String colName = parent != null ? parent+"."+key : key;
 			//if(columnNamePattern != null && !Pattern.matches(columnNamePattern, colName)) continue;
-			Map<String, Object> properties = (Map<String, Object>)info.get(key);
+			Map<String, Object> properties = (Map<String, Object>)entry.getValue();
 			//if(properties.containsKey("properties") && lateral){
 			//	System.out.println(key+"\t"+properties);
 			//	nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esType, result, columnNamePattern, lateral);
 			//}else 
 				if(properties.containsKey("properties")){
 				row = result.getNewRow();				
-				row.set(0, null);
-				row.set(1, null);
+				row.set(0, "elasticsearch");
+				row.set(1, esIndex);
 				row.set(2, esType);
 				row.set(3, colName);
 				if("nested".equals( properties.get("type")) ){
@@ -997,12 +1054,12 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				row.set(11, properties.toString());
 				nextIndex++;
 				result.add(row);
-				nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esType, result, columnNamePattern, lateral);
+				nextIndex = addColumnInfo((Map<String, Object>)properties.get("properties"), colName, nextIndex, esIndex, esType, result, columnNamePattern, lateral);
 			}else {
 				row = result.getNewRow();				
 				String type = (String)properties.get("type");
-				row.set(0, null);
-				row.set(1, null);
+				row.set(0, "elasticsearch");
+				row.set(1, esIndex);
 				row.set(2, esType);
 				row.set(3, colName);
 				row.set(6, 1);
@@ -1010,34 +1067,35 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 				row.set(5, type); 
 				switch (type){
 					case "string" :
-						row.set(4, Heading.getTypeIdForObject(new String())); 
+						row.set(4, Heading.getTypeIdForObject(""));
 						break;
 					case "keyword" :
-						row.set(4, Heading.getTypeIdForObject(new String())); 
+						row.set(4, Heading.getTypeIdForObject(""));
 						break;
 					case "text" :
-						row.set(4, Heading.getTypeIdForObject(new String())); 
+						row.set(4, Heading.getTypeIdForObject(""));
 						break;
 					case "long" :
-						row.set(4, Heading.getTypeIdForObject(new Long(1))); 
+						row.set(4, Heading.getTypeIdForObject(Long.valueOf(1)));
 						break;
 					case "integer" :
-						row.set(4, Heading.getTypeIdForObject(new Integer(1))); 
+						row.set(4, Heading.getTypeIdForObject(Integer.valueOf(1)));
 						break;
 					case "double" :
-						row.set(4, Heading.getTypeIdForObject(new Double(1))); 
+						row.set(4, Heading.getTypeIdForObject(Double.valueOf(1)));
 						break;
 					case "float" :
-						row.set(4, Heading.getTypeIdForObject(new Float(1))); 
+						row.set(4, Heading.getTypeIdForObject(Float.valueOf(1)));
 						break;
 					case "date" :
-						row.set(4, Heading.getTypeIdForObject(new Date())); 
+						row.set(4, Heading.getTypeIdForObject(new Timestamp(1L)));
+						// ToDO: check Timestamp
 						break;
 					case "short" :
-						row.set(4, Heading.getTypeIdForObject(new Short((short)1))); 
+						row.set(4, Heading.getTypeIdForObject(Short.valueOf((short)1)));
 						break;
 					case "byte" :
-						row.set(4, Heading.getTypeIdForObject(new Byte((byte)1))); 
+						row.set(4, Heading.getTypeIdForObject(Byte.valueOf((byte)1)));
 						break;
 					case "boolean" :
 						row.set(4, Types.BOOLEAN); 
@@ -1110,34 +1168,55 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 
 	@Override
 	public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		heading.add(new Column("PKTABLE_CAT"));
+		heading.add(new Column("PKTABLE_SCHEM"));
+		heading.add(new Column("PKTABLE_NAME"));
+		heading.add(new Column("PKCOLUMN_NAME"));
+		heading.add(new Column("FKTABLE_CAT"));
+		heading.add(new Column("FKTABLE_SCHEM"));
+
+		heading.add(new Column("FKTABLE_NAME"));
+		heading.add(new Column("FKCOLUMN_NAME"));
+		heading.add(new Column("KEY_SEQ"));
+		heading.add(new Column("UPDATE_RULE"));
+		heading.add(new Column("DELETE_RULE"));
+		heading.add(new Column("FK_NAME"));
+		heading.add(new Column("PK_NAME"));
+		heading.add(new Column("DEFERRABILITY"));
+
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable,
 			String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getTypeInfo() throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate)
 			throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
@@ -1352,22 +1431,25 @@ public class ESDatabaseMetaData implements DatabaseMetaData{
 	@Override
 	public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
 			throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern,
 			String columnNamePattern) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override
 	public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
 			String columnNamePattern) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Heading heading = new Heading();
+		ESResultSet result = new ESResultSet(heading, 0, heading.getColumnCount());
+		return result;
 	}
 
 	@Override

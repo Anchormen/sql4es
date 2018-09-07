@@ -35,7 +35,7 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			AliasedRelation ar = (AliasedRelation)node;
 			state.setKeyValue("table_alias", ar.getAlias());
 			List<QuerySource> relations = ar.getRelation().accept(this, state);
-			for(QuerySource rr : relations) rr.setAlias(ar.getAlias());
+			for(QuerySource rr : relations) rr.setAlias(ar.getAlias()); //.getValue());
 			return relations;
 		}else if( node instanceof QueryBody){
 			return node.accept(this, state);
@@ -63,13 +63,14 @@ public class RelationParser extends AstVisitor<List<QuerySource> , QueryState>{
 			if(catIndexType.length == 1) {
 				relations.add(new QuerySource(table));
 			}else{
-				relations.add(new QuerySource(catIndexType[catIndexType.length-1]));
+				relations.add(new QuerySource(catIndexType[catIndexType.length-2], catIndexType[catIndexType.length-1]));
 			}
 		}else if (node instanceof TableSubquery){
 			TableSubquery ts = (TableSubquery)node;
 			Object alias = state.getValue("table_alias");
 			Pattern queryRegex = Pattern.compile("from\\s*\\((.+)\\)\\s*(where|as|having|limit|$"+(alias==null ? "":"|"+alias)+")", Pattern.CASE_INSENSITIVE);
 			Matcher m = queryRegex.matcher(state.originalSql());
+			// ToDo: check we take index.type
 			if(m.find()) {
 				relations.add(new QuerySource(m.group(1), ts.getQuery().getQueryBody()));
 			}else state.addException("Unable to parse provided subquery in FROM clause");
