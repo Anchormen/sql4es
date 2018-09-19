@@ -32,7 +32,7 @@
         <presto-parser.version>0.166</presto-parser.version>
         <guava.version>19.0</guava.version>
         <netty.version>4.1.16.Final</netty.version>
-        <joda-time.version>2.9.1</joda-time.version>
+        <joda-time.version>2.10</joda-time.version>
     </properties>
 
     	<repositories>
@@ -184,10 +184,12 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.0</version>
                 <configuration>
+                    <forkCount>0</forkCount>
                     <systemPropertyVariables>
                         <!-- https://stackoverflow.com/questions/50833920/elasticsearch-6-esintegtestcase-codebase-property-already-set -->
                         <!-- workaround codebase issue -->
                         <tests.gradle>false</tests.gradle>
+                        <tests.security.manager>false</tests.security.manager>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
