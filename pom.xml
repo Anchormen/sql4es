@@ -35,7 +35,7 @@
         <joda-time.version>2.9.1</joda-time.version>
     </properties>
 
-    <!--	<repositories>
+    	<repositories>
           <repository>
              <id>elasticsearch-releases</id>
              <url>https://maven.elasticsearch.org/releases</url>
@@ -46,7 +46,7 @@
                 <enabled>false</enabled>
              </snapshots>
           </repository>
-       </repositories>-->
+       </repositories>
 
     <dependencies>
         <dependency>
@@ -178,6 +178,18 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.0</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- https://stackoverflow.com/questions/50833920/elasticsearch-6-esintegtestcase-codebase-property-already-set -->
+                        <!-- workaround codebase issue -->
+                        <tests.gradle>false</tests.gradle>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>
