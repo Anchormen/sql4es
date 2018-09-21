@@ -469,12 +469,12 @@ public class ESUpdateState {
 			// add other 'index global' stuff
 		}
 		if(templatesAdded) sb.append(", ");
-		sb.append("properties:{");
+		sb.append("\"properties\":{");
 		List<TableElement> fields = create.getElements();
 		for(int i=0; i<fields.size(); i++){
 			ColumnDefinition field = (ColumnDefinition)fields.get(i);
 			if(field.getName().equals("_id") || field.getName().equals("_type")) continue; // skip protected fields
-			sb.append("\""+field.getName()+"\":{"+field.getType().replaceAll(":","\":\"")+"}");
+			sb.append("\""+field.getName()+"\":{\""+field.getType().replaceAll(":","\":\"")+"\"}");
 			if(i<fields.size()-1) sb.append(", ");
 		}
 		sb.append("}}"); // close type and properties blocks
