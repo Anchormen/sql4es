@@ -368,7 +368,7 @@ public class ESResultSet implements ResultSet {
 		Object value = getForColumn(columnIndex);
 		if(value == null) return null;
 		int type = heading.getColumn(heading.getIndexForColumn(columnIndex)).getSqlType();
-		if(type == Types.DATE){
+		if(type == Types.TIMESTAMP){
 			if(value instanceof String) return new Time(getTimeFromString((String)value));
 			return new Time(((java.util.Date)value).getTime());
 		}else throw new SQLException("Value in column '"+columnIndex+"' is not a Time but is "+value.getClass().getSimpleName());

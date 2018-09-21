@@ -53,7 +53,7 @@ public class CreateITest extends Sql4EsBase {
 		rs = st.executeQuery("SELECT * FROM simpletype");
 		ResultSetMetaData rsm = rs.getMetaData();
 		assertEquals(Types.VARCHAR, rsm.getColumnType(4));
-		assertEquals(Types.DATE, rsm.getColumnType(5));
+		assertEquals(Types.TIMESTAMP, rsm.getColumnType(5));
 		assertEquals(Types.INTEGER, rsm.getColumnType(6));
 		count = 0;
 		while(rs.next()){
